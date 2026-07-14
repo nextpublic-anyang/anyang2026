@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>당직등 — 3주체 균형 AI 야간민원 시스템</title>
+<style>
+:root{
+  /* 스마트안양 4색 브랜드 팔레트 (원색)
+     01 시민·소통 Blue #0082CB / 02 무한·발전 Purple #6F5CA8
+     03 행복·스마트 Pink #D63384 / 04 젊음·역동 Orange #FD7E14 */
+  --brand-blue:#0082CB; --brand-purple:#6F5CA8; --brand-pink:#D63384; --brand-orange:#FD7E14;
+
+  --night:#0F1424; --panel:#191F35; --panel2:#212a45; --line:#2E3654;
+  --text:#EAEDF7; --dim:#9AA3C0; --faint:#646C8C;
+
+  /* 다크 배경에서도 또렷하도록 밝기 보정한 포인트 색 (원색 계열 유지) */
+  --red:#F0568F;   /* 긴급 ← 브랜드 Pink 계열 */
+  --amber:#FF9A3D; /* 안내 ← 브랜드 Orange 계열 */
+  --blue:#3BA6E8;  /* 이송 ← 브랜드 Blue 계열 */
+  --gray:#9691B8;  /* 비민원 ← 브랜드 Purple-gray 계열 */
+  --purple:#9B86D6;/* 브랜드 아이덴티티(로고·강조) ← Purple 계열 */
+
+  --red-bg:#3A1B29; --amber-bg:#3A2A16; --blue-bg:#13294A; --gray-bg:#282740;
+  --ok:#4FCF9C; --ok-bg:#123A2D;
+  --mono:ui-monospace,'SF Mono','Cascadia Mono',Consolas,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:Pretendard,'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;
+  background:var(--night); color:var(--text); min-height:100vh;
+  background-image:radial-gradient(1200px 500px at 70% -10%, #1B2438 0%, transparent 60%);
+}
+header{display:flex;align-items:center;gap:14px;padding:18px 26px 14px;border-bottom:1px solid var(--line)}
+.lamp{width:38px;height:38px;border-radius:50%;flex-shrink:0;background:radial-gradient(circle at 35% 30%, #FFD9A0, var(--amber) 55%, #B85C10);box-shadow:0 0 18px 4px rgba(255,154,61,.45);animation:glow 3.2s ease-in-out infinite;cursor:pointer}
+@keyframes glow{0%,100%{box-shadow:0 0 14px 3px rgba(255,154,61,.35)}50%{box-shadow:0 0 24px 7px rgba(255,154,61,.55)}}
+@media (prefers-reduced-motion:reduce){.lamp{animation:none}}
+.brand{display:flex;align-items:center;gap:14px;cursor:pointer;border:none;background:none;font-family:inherit;text-align:left;padding:0}
+h1{font-size:21px;font-weight:800;letter-spacing:-.02em;color:var(--text)}
+h1 small{font-size:13px;font-weight:500;color:var(--dim);margin-left:10px}
+.clock{margin-left:auto;font-family:var(--mono);font-size:14px;color:var(--dim)}
+nav{display:flex;gap:4px;padding:10px 22px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+nav button{background:none;border:none;color:var(--dim);font-size:14.5px;font-weight:600;padding:10px 14px;cursor:pointer;border-bottom:2.5px solid transparent;font-family:inherit}
+nav button.on{color:var(--text);border-bottom-color:var(--amber)}
+nav button .cnt{display:inline-block;min-width:20px;padding:1px 6px;margin-left:6px;border-radius:10px;background:var(--red);color:#fff;font-size:11.5px;font-weight:700}
+nav button .cnt.b{background:var(--blue)}
+main{max-width:760px;margin:0 auto;padding:24px 22px 70px}
+.tab{display:none}.tab.on{display:block}
+.grid2{display:flex;flex-direction:column;gap:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}
+/* 역할 화면 상단 뒤로가기 바 */
+.backbar{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.backbar .back{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:10px;padding:9px 16px;font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
+.backbar .back:hover{color:var(--text);border-color:var(--faint)}
+.backbar .rolename{font-size:16px;font-weight:800}
+.backbar .rolename .ic{margin-right:7px}
+.backbar .cnt{display:inline-block;min-width:20px;padding:1px 7px;margin-left:8px;border-radius:10px;color:#fff;font-size:11.5px;font-weight:700}
+footer{max-width:760px;margin:0 auto;padding:26px 22px 50px;border-top:1px solid var(--line);color:var(--faint);font-size:12px;line-height:1.7}
+footer b{color:var(--dim)}
+footer .ver{font-family:var(--mono);color:var(--dim)}
+.card h2{font-size:15px;font-weight:700;margin-bottom:14px}
+.card h2 .sub{font-weight:500;font-size:12.5px;color:var(--faint);margin-left:8px}
+label{display:block;font-size:12.5px;font-weight:600;color:var(--dim);margin:12px 0 5px}
+input[type=text],input[type=password],textarea,select{width:100%;background:var(--night);border:1px solid var(--line);border-radius:9px;color:var(--text);font-size:14px;padding:10px 12px;font-family:inherit}
+textarea{min-height:110px;resize:vertical;line-height:1.55}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--blue);outline-offset:-1px}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:none;border-radius:10px;font-family:inherit;font-size:14.5px;font-weight:700;padding:12px 18px;cursor:pointer;transition:filter .15s}
+.btn:hover{filter:brightness(1.12)}
+.btn:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.btn.primary{background:var(--amber);color:#2A1C05;width:100%;margin-top:16px;font-size:15.5px}
+.btn.danger{background:var(--red);color:#fff}
+.btn.ghost{background:var(--panel2);color:var(--dim);border:1px solid var(--line)}
+.btn.small{padding:7px 12px;font-size:12.5px;border-radius:8px}
+.btn:disabled{opacity:.5;cursor:wait}
+.hint{font-size:12px;color:var(--faint);margin-top:8px;line-height:1.5}
+.samples{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.samples button{background:var(--panel2);border:1px solid var(--line);color:var(--dim);font-size:12px;border-radius:20px;padding:5px 12px;cursor:pointer;font-family:inherit}
+.samples button:hover{color:var(--text);border-color:var(--faint)}
+
+/* 역할 선택 홈 — 스마트안양 육각형 메뉴 (원본 스타일) */
+.home-lead{text-align:center;font-size:15px;font-weight:600;color:var(--dim);margin:24px 0 6px}
+.hexrow{display:flex;justify-content:center;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+.hexbtn{background:none;border:none;padding:0;cursor:pointer;font-family:inherit;transition:transform .18s;position:relative;width:190px;height:212px;flex-shrink:0}
+.hexbtn:hover{transform:translateY(-5px)}
+.hexbtn:focus-visible{outline:none}
+.hexbtn:focus-visible .hexborder{stroke:#fff;stroke-width:4}
+.hexsvg{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 10px 16px rgba(0,0,0,.42))}
+.hexsvg .hexborder{fill:none;stroke:rgba(255,255,255,.92);stroke-width:2.4}
+.hexsvg .hexcap{opacity:.55}
+.hexnum{position:absolute;top:20%;left:0;right:0;text-align:center;font-family:var(--mono);font-size:14px;font-weight:700;color:rgba(255,255,255,.95);letter-spacing:.06em;pointer-events:none}
+.hextext{position:absolute;top:34%;left:0;right:0;bottom:0;display:flex;align-items:flex-start;justify-content:center;padding-top:6px;font-size:25px;font-weight:800;color:#fff;letter-spacing:-.01em;text-shadow:0 1px 3px rgba(0,0,0,.25);pointer-events:none}
+.hexplus{font-size:30px;font-weight:300;color:var(--faint);flex-shrink:0;margin:0 -2px}
+@media(max-width:720px){
+  .hexrow{flex-direction:column}
+  .hexplus{transform:rotate(0)}
+}
+.principle{margin-top:34px;font-size:13px;color:var(--faint);line-height:1.8;text-align:center}
+.principle b{color:var(--dim)}
+
+/* 역할 화면 상단 육각형 히어로 */
+.hexdesc{margin-top:16px;font-size:13px;color:var(--dim);line-height:1.7}
+.hexdesc b{color:var(--text)}
+.role-hero{display:flex;flex-direction:column;align-items:center;text-align:center;margin:6px 0 22px}
+.role-hero .hexbtn{cursor:default;width:170px;height:190px}
+.role-hero .hexbtn:hover{transform:none}
+.role-hero .hexdesc{max-width:440px}
+
+/* 채널/이미지 */
+.channels{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px}
+.channels button{background:var(--night);border:1px solid var(--line);border-radius:10px;color:var(--dim);padding:11px 6px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:center;line-height:1.4}
+.channels button .ic{display:block;font-size:19px;margin-bottom:3px}
+.channels button.on{border-color:var(--amber);color:var(--text);background:var(--amber-bg)}
+.imgzone{margin-top:10px}
+.imgzone .drop{border:1.5px dashed var(--line);border-radius:10px;padding:14px;text-align:center;font-size:13px;color:var(--faint);cursor:pointer}
+.imgzone .drop:hover{border-color:var(--faint);color:var(--dim)}
+.imgzone img{max-width:100%;max-height:160px;border-radius:10px;margin-top:10px;display:block}
+.msgzone{margin-top:10px}
+.msgapps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.msgapps .mapp{background:var(--night);border:1px solid var(--line);border-radius:10px;color:var(--dim);padding:12px 6px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;text-align:center;line-height:1.4;text-decoration:none;display:block;transition:border-color .15s,color .15s}
+.msgapps .mapp .ic{display:flex;align-items:center;justify-content:center;margin-bottom:5px}
+.msgapps .mapp .ic svg{display:block;border-radius:6px}
+.msgapps .mapp:hover{border-color:var(--amber);color:var(--text);background:var(--amber-bg)}
+@media(max-width:520px){.msgapps{grid-template-columns:repeat(2,1fr)}}
+
+/* 분류 결과 램프 */
+.result-lamp{border-radius:14px;padding:16px 18px;display:flex;gap:14px;align-items:flex-start;border:1px solid transparent;margin-bottom:14px}
+.result-lamp .dot{width:15px;height:15px;border-radius:50%;margin-top:4px;flex-shrink:0}
+.result-lamp.c1{background:var(--red-bg);border-color:#6E2E38}.result-lamp.c1 .dot{background:var(--red);box-shadow:0 0 14px 3px rgba(255,93,93,.6)}
+.result-lamp.c2{background:var(--amber-bg);border-color:#6E5528}.result-lamp.c2 .dot{background:var(--amber);box-shadow:0 0 14px 3px rgba(255,180,84,.6)}
+.result-lamp.c3{background:var(--blue-bg);border-color:#2E4A78}.result-lamp.c3 .dot{background:var(--blue);box-shadow:0 0 14px 3px rgba(91,157,255,.6)}
+.result-lamp.c4{background:var(--gray-bg)}.result-lamp.c4 .dot{background:var(--gray)}
+.result-lamp .t1{font-size:16px;font-weight:800}
+.result-lamp .t2{font-size:13px;color:var(--dim);margin-top:4px;line-height:1.55}
+.sop{list-style:none;counter-reset:s}
+.sop li{counter-increment:s;position:relative;padding:9px 12px 9px 44px;font-size:13.5px;line-height:1.55;border-bottom:1px dashed var(--line)}
+.sop li:last-child{border-bottom:none}
+.sop li::before{content:counter(s);position:absolute;left:8px;top:8px;width:24px;height:24px;border-radius:50%;background:var(--panel2);border:1px solid var(--line);color:var(--dim);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:var(--mono)}
+.callout{margin-top:12px;border-radius:10px;padding:12px 14px;font-size:13.5px;line-height:1.65;background:var(--night);border:1px solid var(--line);color:var(--dim)}
+.callout b{color:var(--text)}
+.callout.warn{border-color:#6E5528;background:var(--amber-bg);color:var(--text)}
+.callout.ok{border-color:#2E6E52;background:var(--ok-bg);color:var(--text)}
+.actions{display:flex;gap:9px;margin-top:14px;flex-wrap:wrap}
+.rcpt{font-family:var(--mono);font-size:20px;font-weight:800;color:var(--ok);letter-spacing:.03em}
+
+/* 비상연락처 */
+.contacts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.contacts .ct{background:var(--red-bg);border:1px solid #6E2E38;border-radius:10px;padding:10px 12px;font-size:12.5px}
+.contacts .ct b{display:block;font-size:14px;color:var(--red);font-family:var(--mono);margin-top:2px}
+.contacts .ct.sub{background:var(--panel2);border-color:var(--line)}
+.contacts .ct.sub b{color:var(--text)}
+
+/* 큐/티켓 */
+.filterbar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.chip{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:20px;font-size:12.5px;font-weight:600;padding:6px 14px;cursor:pointer;font-family:inherit}
+.chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.ticket{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:12px;padding:16px 18px;margin-bottom:12px}
+.ticket.cat1{border-left-color:var(--red)}.ticket.cat2{border-left-color:var(--amber)}.ticket.cat4{border-left-color:var(--gray)}
+.ticket.reconnect{outline:2px solid var(--red);outline-offset:2px}
+.ticket .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ticket .title{font-size:15px;font-weight:700}
+.ticket .meta{font-size:12px;color:var(--faint);font-family:var(--mono)}
+.ticket .dept{margin-left:auto;font-size:12px;font-weight:700;color:var(--blue);background:var(--blue-bg);border-radius:6px;padding:3px 9px}
+.ticket dl{display:grid;grid-template-columns:82px 1fr;gap:6px 10px;margin:12px 0 0;font-size:13px}
+.ticket dt{color:var(--faint);font-weight:600}
+.ticket dd{color:var(--text);line-height:1.55}
+.ticket .thumb{max-height:110px;border-radius:8px;margin-top:10px;cursor:zoom-in}
+.ticket .foot{display:flex;gap:8px;margin-top:14px;align-items:center;flex-wrap:wrap}
+.status{font-size:12px;font-weight:700;border-radius:6px;padding:3px 10px}
+.status.s0{background:var(--amber-bg);color:var(--amber)}
+.status.s1{background:var(--blue-bg);color:var(--blue)}
+.status.s2{background:var(--ok-bg);color:var(--ok)}
+.pri{font-size:11.5px;font-weight:800;border-radius:6px;padding:3px 9px;letter-spacing:.03em}
+.pri.p1{background:var(--red);color:#fff}
+.pri.p2{background:var(--amber);color:#2A1C05}
+.pri.p3{background:var(--blue-bg);color:var(--blue)}
+.pri.p4{background:var(--gray-bg);color:var(--gray)}
+.tag{font-size:11px;font-weight:700;border-radius:5px;padding:2px 7px}
+.tag.ai{background:var(--panel2);color:var(--faint)}
+.tag.human{background:var(--ok-bg);color:var(--ok)}
+.tag.recon{background:var(--red);color:#fff}
+.empty{text-align:center;color:var(--faint);padding:50px 20px;font-size:14px;line-height:1.7;border:1px dashed var(--line);border-radius:14px}
+.timeline{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px;display:none}
+.timeline.show{display:block}
+.timeline .ev{display:flex;gap:10px;font-size:12.5px;padding:4px 0;color:var(--dim)}
+.timeline .ev .t{font-family:var(--mono);color:var(--faint);flex-shrink:0;width:88px}
+.timeline .ev::before{content:"●";color:var(--blue);font-size:8px;margin-top:4px}
+.reclass{display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap;background:var(--night);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.reclass span{font-size:12.5px;color:var(--dim);font-weight:600}
+.reclass select{width:auto;flex:1;min-width:150px}
+
+/* 게시판 스타일 (당직원 큐) */
+.queue-notice{background:var(--amber-bg);border:1px solid var(--amber);border-radius:10px;padding:11px 14px;font-size:12.5px;color:var(--text);line-height:1.6;margin-bottom:14px}
+.queue-notice b{color:var(--amber)}
+.send-hint{font-size:11.5px;color:var(--faint);margin-top:8px}
+.board{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.brow{display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer;border-bottom:1px solid var(--line);border-left:4px solid var(--blue);background:var(--panel)}
+.brow:hover{background:var(--panel2)}
+.brow.cat1{border-left-color:var(--red)}.brow.cat2{border-left-color:var(--amber)}.brow.cat4{border-left-color:var(--gray)}
+.brow.reconnect{background:var(--red-bg)}
+.brow-title{flex:1;font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brow-meta{font-size:12px;color:var(--faint);font-family:var(--mono);flex-shrink:0}
+.brow-meta.rc{color:var(--dim)}
+.brow-arrow{font-family:var(--mono);color:var(--faint);font-size:16px;width:16px;text-align:center;flex-shrink:0}
+.bdetail{padding:2px 16px 16px;border-bottom:1px solid var(--line);background:var(--night)}
+.bdetail dl{display:grid;grid-template-columns:76px 1fr;gap:6px 10px;margin:12px 0 0;font-size:13px}
+.bdetail dt{color:var(--faint);font-weight:600}
+.bdetail dd{color:var(--text);line-height:1.55}
+@media(max-width:560px){.brow-meta:not(.rc){display:none}}
+
+/* 처리자 요약카드 헤더 */
+.sumhead{display:grid;grid-template-columns:repeat(4,auto) 1fr;gap:8px 16px;align-items:center;margin-bottom:2px}
+
+/* 공문 모달 */
+#modal{position:fixed;inset:0;background:rgba(5,10,22,.75);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+#modal.show{display:flex}
+#modal .paper{background:#FDFBF5;color:#1B1B1B;max-width:640px;width:100%;max-height:86vh;overflow:auto;border-radius:6px;padding:42px 46px;font-family:'Batang','Noto Serif KR',serif;font-size:14px;line-height:1.9;box-shadow:0 20px 60px rgba(0,0,0,.6);white-space:pre-wrap}
+#modal .paper h3{text-align:center;font-size:17px;letter-spacing:.4em;margin-bottom:22px;font-family:inherit}
+#modal .bar{position:sticky;bottom:-42px;background:#FDFBF5;padding:14px 0 0;display:flex;gap:8px;justify-content:flex-end}
+#modal .bar .btn{font-family:Pretendard,sans-serif}
+#imgview{position:fixed;inset:0;background:rgba(5,10,22,.85);display:none;align-items:center;justify-content:center;z-index:60;cursor:zoom-out}
+#imgview.show{display:flex}
+#imgview img{max-width:92vw;max-height:92vh;border-radius:8px}
+
+/* 통계/환류 */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+@media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+.stat .n{font-size:30px;font-weight:800;font-family:var(--mono)}
+.stat .l{font-size:12.5px;color:var(--dim);margin-top:4px}
+.stat.k1 .n{color:var(--red)}.stat.k2 .n{color:var(--amber)}.stat.k3 .n{color:var(--blue)}.stat.k4 .n{color:var(--gray)}
+.bar-h{display:flex;height:26px;border-radius:8px;overflow:hidden;margin:6px 0 22px}
+.insight{border-left:4px solid var(--ok);background:var(--panel);border-radius:0 12px 12px 0;padding:14px 16px;margin-bottom:10px;font-size:13.5px;line-height:1.65;cursor:pointer;transition:background .15s,transform .15s}
+.insight:hover{background:var(--panel2);transform:translateX(2px)}
+.insight b{color:var(--ok)}
+.insight .why{color:var(--faint);font-size:12.5px;margin-top:4px}
+.insight .arrow{float:right;color:var(--faint);font-size:12px}
+#insightDetailCard{margin-top:16px}
+.map-embed{width:100%;height:280px;border:1px solid var(--line);border-radius:10px;margin:10px 0}
+.detail-list{margin-top:10px}
+.detail-row{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:13px;background:var(--night)}
+.detail-row .t1{font-weight:700;color:var(--text)}
+.detail-row .t2{color:var(--dim);margin-top:3px;font-size:12.5px}
+.detail-bar{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px}
+.detail-bar .lbl{width:120px;flex-shrink:0;color:var(--dim)}
+.detail-bar .bar{flex:1;height:16px;background:var(--panel2);border-radius:8px;overflow:hidden}
+.detail-bar .bar i{display:block;height:100%;background:var(--ok);border-radius:8px}
+.detail-bar .val{width:40px;text-align:right;font-weight:700;color:var(--text)}
+.effect table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+.effect th,.effect td{border:1px solid var(--line);padding:8px 10px;text-align:left}
+.effect th{background:var(--panel2);color:var(--dim);font-weight:600}
+.effect{font-size:13.5px;line-height:1.8;color:var(--dim)}
+.effect b{color:var(--text)}
+
+#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(80px);background:#0A1120;border:1px solid var(--line);color:var(--text);font-size:13.5px;padding:11px 20px;border-radius:10px;transition:transform .25s;z-index:99;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+#toast.show{transform:translateX(-50%) translateY(0)}
+.spin{width:15px;height:15px;border:2px solid #2A1C05;border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite;display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+.aitag{font-size:11px;font-weight:700;color:var(--faint);letter-spacing:.05em}
+.aitag.live{color:var(--ok)}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="hexgrad1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2AA3E0"/><stop offset="55%" stop-color="#0082CB"/><stop offset="100%" stop-color="#0069A8"/>
+    </linearGradient>
+    <linearGradient id="hexgrad2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8574BE"/><stop offset="55%" stop-color="#6F5CA8"/><stop offset="100%" stop-color="#5A4990"/>
+    </linearGradient>
+    <linearGradient id="hexgrad3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#E255A0"/><stop offset="55%" stop-color="#D63384"/><stop offset="100%" stop-color="#B82A70"/>
+    </linearGradient>
+    <linearGradient id="hexcap1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7CC4EC"/><stop offset="100%" stop-color="#3FA0DA"/>
+    </linearGradient>
+    <linearGradient id="hexcap2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A99BD3"/><stop offset="100%" stop-color="#8272BC"/>
+    </linearGradient>
+    <linearGradient id="hexcap3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#EC84BC"/><stop offset="100%" stop-color="#DE5AA0"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<header>
+  <button class="brand" id="homeBrand" title="처음 화면으로">
+    <span class="lamp" aria-hidden="true"></span>
+    <h1>당직등 <small>민원인 · 당직원 · 처리자가 함께 쓰는 AI 야간민원 시스템</small></h1>
+  </button>
+  <div class="clock" id="clock"></div>
+</header>
+
+<main>
+
+<!-- ================= 역할 선택 ================= -->
+<section class="tab on" id="tab-home">
+  <p class="home-lead">역할을 선택하세요</p>
+  <div class="hexrow">
+    <button class="hexbtn h1" data-go="citizen" aria-label="민원인">
+      <svg class="hexsvg" viewBox="0 0 100 112" preserveAspectRatio="none">
+        <path class="hexfill" fill="url(#hexgrad1)" d="M46,4.3 Q50,2 54,4.3 L92.5,26.5 Q96.5,28.8 96.5,33.5 L96.5,78.5 Q96.5,83.2 92.5,85.5 L54,107.7 Q50,110 46,107.7 L7.5,85.5 Q3.5,83.2 3.5,78.5 L3.5,33.5 Q3.5,28.8 7.5,26.5 Z"/>
+        <path class="hexcap" fill="url(#hexcap1)" d="M46,4.3 Q50,2 54,4.3 L92.5,26.5 Q96.5,28.8 96.5,33.5 L3.5,33.5 Q3.5,28.8 7.5,26.5 Z"/>
+        <path class="hexborder" d="M46,4.3 Q50,2 54,4.3 L92.5,26.5 Q96.5,28.8 96.5,33.5 L96.5,78.5 Q96.5,83.2 92.5,85.5 L54,107.7 Q50,110 46,107.7 L7.5,85.5 Q3.5,83.2 3.5,78.5 L3.5,33.5 Q3.5,28.8 7.5,26.5 Z"/>
+      </svg>
+      <span class="hexnum">01</span>
+      <span class="hextext">민원인</span>
+    </button>
+    <span class="hexplus">+</span>
+    <button class="hexbtn h2" data-go="duty" aria-label="당직원">
+      <svg class="hexsvg" viewBox="0 0 100 112" preserveAspectRatio="none">
+        <path class="hexfill" fill="url(#hexgrad2)" d="M46,4.3 Q50,2 54,4.3 L92.5,26.5 Q96.5,28.8 96.5,33.5 L96.5,78.5 Q96.5,83.2 92.5,85.5 L54,107.7 Q50,110 46,107.7 L7.5,85.5 Q3.5,83.2 3.5,78.5 L3.5,33.5 Q3.5,28.8 7.5,26.5 Z"/>
+        <path class="hexcap" fill="url(#hexcap2)" d="M46,4.3 Q50,2 54,4.3 L92.5,26.5 Q96.5,28.8 96.5,33.5 L3.5,33.5 Q3.5,28.8 7.5,26.5 Z"/>
+        <path class="hexborder" d="M46,4.3 Q50,2 54,4.3 L92.5,26.5 Q96.5,28.8 96.5,33.5 L96.5,78.5 Q96.5,83.2 92.5,85.5 L54,107.7 Q50,110 46,107.7 L7.5,85.5 Q3.5,83.2 3.5,78.5 L3.5,33.5 Q3.5,28.8 7.5,26.5 Z"/>
+      </svg>
+      <span class="hexnum">02</span>
+      <span class="hextext">당직원</span>
+    </button>
+    <span class="hexplus">+</span>
+    <button class="hexbtn h3" data-go="handler" aria-label="처리자">
+      <svg class="hexsvg" viewBox="0 0 100 112" preserveAspectRatio="none">
+        <path class="hexfill" fill="url(#hexgrad3)" d="M46,4.3 Q50,2 54,4.3 L92.5,26.5 Q96.5,28.8 96.5,33.5 L96.5,78.5 Q96.5,83.2 92.5,85.5 L54,107.7 Q50,110 46,107.7 L7.5,85.5 Q3.5,83.2 3.5,78.5 L3.5,33.5 Q3.5,28.8 7.5,26.5 Z"/>
+        <path class="hexcap" fill="url(#hexcap3)" d="M46,4.3 Q50,2 54,4.3 L92.5,26.5 Q96.5,28.8 96.5,33.5 L3.5,33.5 Q3.5,28.8 7.5,26.5 Z"/>
+        <path class="hexborder" d="M46,4.3 Q50,2 54,4.3 L92.5,26.5 Q96.5,28.8 96.5,33.5 L96.5,78.5 Q96.5,83.2 92.5,85.5 L54,107.7 Q50,110 46,107.7 L7.5,85.5 Q3.5,83.2 3.5,78.5 L3.5,33.5 Q3.5,28.8 7.5,26.5 Z"/>
+      </svg>
+      <span class="hexnum">03</span>
+      <span class="hextext">처리자</span>
+    </button>
+  </div>
+  <p class="principle">
+    설계 원칙 — <b>AI는 1차 판단으로 사람을 보조</b>하고, <b>최종 결정은 항상 사람</b>이 내립니다.<br>
+    필터링된 통화도 <b>긴급 재연결</b> 경로를 보장하여 실제 위급상황이 배제되지 않도록 합니다.
+  </p>
+  <div class="actions" style="justify-content:center;margin-top:22px">
+    <button class="btn ghost small" data-go="settings">설정</button>
+  </div>
+</section>
+
+<!-- ================= 민원인 ================= -->
+<section class="tab" id="tab-citizen">
+  <div class="backbar"><button class="back" data-go="home">← 역할 선택</button></div>
+  <div class="role-hero">
+    <div class="hexbtn h1">
+      <svg class="hexsvg" viewBox="0 0 100 112" preserveAspectRatio="none">
+        <path class="hexfill" fill="url(#hexgrad1)" d="M46,4.3 Q50,2 54,4.3 L92.5,26.5 Q96.5,28.8 96.5,33.5 L96.5,78.5 Q96.5,83.2 92.5,85.5 L54,107.7 Q50,110 46,107.7 L7.5,85.5 Q3.5,83.2 3.5,78.5 L3.5,33.5 Q3.5,28.8 7.5,26.5 Z"/>
+        <path class="hexcap" fill="url(#hexcap1)" d="M46,4.3 Q50,2 54,4.3 L92.5,26.5 Q96.5,28.8 96.5,33.5 L3.5,33.5 Q3.5,28.8 7.5,26.5 Z"/>
+        <path class="hexborder" d="M46,4.3 Q50,2 54,4.3 L92.5,26.5 Q96.5,28.8 96.5,33.5 L96.5,78.5 Q96.5,83.2 92.5,85.5 L54,107.7 Q50,110 46,107.7 L7.5,85.5 Q3.5,83.2 3.5,78.5 L3.5,33.5 Q3.5,28.8 7.5,26.5 Z"/>
+      </svg>
+      <span class="hexnum">01</span>
+      <span class="hextext">민원인</span>
+    </div>
+    <div class="hexdesc">야간·휴일에도 신고와 문의가 가능합니다. 단순 문의는 AI가 즉시 안내하고, 고충민원은 <b>접수번호와 처리예정일</b>을 바로 발급합니다.</div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h2>신고·문의 접수 <span class="sub">밤에도 안양시가 듣고 있습니다</span></h2>
+      <label>접수 방법</label>
+      <div class="channels" id="cChannels">
+        <button class="on" data-ch="게시판"><span class="ic">📋</span>시민 게시판</button>
+        <button data-ch="사진신고"><span class="ic">📷</span>사진 신고</button>
+        <button data-ch="메신저"><span class="ic">🗨️</span>메신저 연동</button>
+      </div>
+      <div class="msgzone" id="cMsgzone" hidden>
+        <label>연동할 메신저를 선택하세요</label>
+        <p class="hint" style="margin-top:0;margin-bottom:10px">버튼을 누르면 안양시 공식 채널이 해당 메신저 앱에서 열립니다. 신고 내용은 <b>앱 안에서</b> 대화로 접수합니다.</p>
+        <div class="msgapps" id="cMsgApps">
+          <a class="mapp" data-app="카카오톡" href="https://pf.kakao.com/" target="_blank" rel="noopener">
+            <span class="ic"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#FEE500"/><path d="M12 6.2c-3.2 0-5.8 2-5.8 4.6 0 1.66 1.13 3.12 2.83 3.95l-.6 2.2c-.05.2.16.35.33.24l2.6-1.72c.21.02.42.03.64.03 3.2 0 5.8-2 5.8-4.7S15.2 6.2 12 6.2z" fill="#3C1E1E"/></svg></span>카카오톡</a>
+          <a class="mapp" data-app="라인" href="https://line.me/R/" target="_blank" rel="noopener">
+            <span class="ic"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#06C755"/><path d="M12 5.5c-3.6 0-6.5 2.34-6.5 5.22 0 2.58 2.3 4.74 5.4 5.15.21.05.5.14.57.32.06.16.04.42.02.58l-.09.55c-.03.16-.13.64.56.35s3.72-2.19 5.08-3.75c.94-1.03 1.46-2.07 1.46-3.2C18.5 7.84 15.6 5.5 12 5.5z" fill="#fff"/><path d="M9.4 9.9v2.9m0-2.9H8.2m6.1 0v2.9l-1.7-2.4v2.4m-2.1-2.9v2.9m2.6-2.9h1.2m-1.2 1.45h1.2" stroke="#06C755" stroke-width=".85" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>라인</a>
+          <a class="mapp" data-app="텔레그램" href="https://t.me/" target="_blank" rel="noopener">
+            <span class="ic"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#29A9EB"/><path d="M17.8 7.3l-2.02 9.55c-.15.67-.55.83-1.11.52l-3.07-2.26-1.48 1.43c-.16.16-.3.3-.62.3l.22-3.13 5.7-5.15c.25-.22-.05-.34-.39-.12l-7.04 4.43-3.03-.95c-.66-.2-.67-.66.14-.98l11.85-4.57c.55-.2 1.03.13.85.98z" fill="#fff"/></svg></span>텔레그램</a>
+          <a class="mapp" data-app="페이스북 메신저" href="https://m.me/" target="_blank" rel="noopener">
+            <span class="ic"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><defs><linearGradient id="msgr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#00B2FF"/><stop offset="1" stop-color="#006AFF"/></linearGradient></defs><rect width="24" height="24" rx="6" fill="url(#msgr)"/><path d="M12 5.4c-3.7 0-6.6 2.72-6.6 6.4 0 2.06.9 3.85 2.36 5.06.13.1.2.26.2.42l.04 1.3c.01.42.44.69.82.52l1.45-.64c.12-.06.26-.07.39-.03.66.18 1.36.28 2.34.18 3.7-.38 6.6-2.72 6.6-6.81C18.6 8.12 15.7 5.4 12 5.4z" fill="#fff"/><path d="M8.1 13.6l1.94-3.07c.31-.49.97-.61 1.43-.27l1.54 1.16c.14.1.33.1.47 0l2.08-1.58c.28-.21.64.12.46.42l-1.94 3.07c-.31.49-.97.61-1.43.27l-1.54-1.16a.4.4 0 00-.47 0l-2.08 1.58c-.28.21-.64-.12-.46-.42z" fill="#006AFF"/></svg></span>페이스북 메신저</a>
+          <a class="mapp" data-app="인스타그램 메신저" href="https://ig.me/m/" target="_blank" rel="noopener">
+            <span class="ic"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><defs><radialGradient id="ig" cx="0.3" cy="1" r="1.1"><stop offset="0" stop-color="#FFD776"/><stop offset="0.25" stop-color="#F3A345"/><stop offset="0.5" stop-color="#EF4E56"/><stop offset="0.75" stop-color="#D53E9D"/><stop offset="1" stop-color="#7A34C6"/></radialGradient></defs><rect width="24" height="24" rx="6" fill="url(#ig)"/><rect x="6.2" y="6.2" width="11.6" height="11.6" rx="3.4" fill="none" stroke="#fff" stroke-width="1.5"/><circle cx="12" cy="12" r="2.9" fill="none" stroke="#fff" stroke-width="1.5"/><circle cx="15.4" cy="8.6" r="1" fill="#fff"/></svg></span>인스타그램 메신저</a>
+          <a class="mapp" data-app="네이버톡톡" href="https://talk.naver.com/" target="_blank" rel="noopener">
+            <span class="ic"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#03C75A"/><path d="M12 5.6c-3.6 0-6.5 2.32-6.5 5.35 0 2.66 2.24 4.88 5.3 5.28.18.02.32.15.34.33l.15 1.42c.04.34.42.53.72.36l1.9-1.1c.14-.08.3-.11.46-.09 2.66-.35 4.13-2.28 4.13-6.2C18.5 7.92 15.6 5.6 12 5.6z" fill="#fff"/><path d="M9.7 9.9v4.2m0-4.2l2.5 4.2m0-4.2v4.2" stroke="#03C75A" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>네이버톡톡</a>
+        </div>
+        <p class="hint">※ 실제 배포 시 각 링크를 안양시 공식 채널 주소로 교체하면 됩니다. (예: 카카오톡 pf.kakao.com/_안양시채널)</p>
+      </div>
+      <div id="cFormZone">
+      <div class="imgzone" id="cImgzone" hidden>
+        <label>현장 사진</label>
+        <div class="drop" id="cDrop">클릭하여 사진 선택 — AI가 사진을 함께 분석합니다</div>
+        <input type="file" id="cImgFile" accept="image/*" hidden>
+        <img id="cImgPrev" alt="" hidden>
+      </div>
+      <label for="cLoc">발생 장소</label>
+      <input type="text" id="cLoc" placeholder="예: 만안구 안양동 ○○아파트 앞">
+      <label for="cBody">내용</label>
+      <textarea id="cBody" placeholder="어떤 일이 있으신가요? 편하게 적어주세요."></textarea>
+      <div class="row">
+        <div>
+          <label for="cName">성함 (선택)</label>
+          <input type="text" id="cName" placeholder="홍길동">
+        </div>
+        <div>
+          <label for="cPhone">회신 연락처 (선택)</label>
+          <input type="text" id="cPhone" placeholder="010-0000-0000">
+        </div>
+      </div>
+      <div class="samples">
+        <button data-cs="0">체험① 가로등 문의</button>
+        <button data-cs="1">체험② 무단투기 고충</button>
+        <button data-cs="2">체험③ 화재 위험</button>
+        <button data-cs="3">체험④ 장난 전화</button>
+      </div>
+      <button class="btn primary" id="cSubmit">접수하기</button>
+      <p class="hint">※ 화재·범죄 등 급박한 위험은 지금 바로 119 / 112에 전화하세요.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>접수 결과 <span class="aitag" id="cAiTag">RULE ENGINE</span></h2>
+        <div id="cResult"><div class="empty">접수하면 AI가 즉시 확인해 안내해 드립니다.</div></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h2>내 민원 조회 <span class="sub">접수번호로 처리 상황을 확인하세요</span></h2>
+        <div class="row">
+          <input type="text" id="trackNo" placeholder="예: DJ-260710-003" style="flex:2">
+          <button class="btn ghost" id="btnTrack" style="flex:1">조회</button>
+        </div>
+        <div id="trackResult"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 당직원 ================= -->
+<section class="tab" id="tab-duty">
+  <div class="backbar">
+    <button class="back" data-go="home">← 역할 선택</button>
+    <button class="btn ghost small" data-go="policy" style="margin-left:auto">📊 정책환류 보기</button>
+  </div>
+  <div class="role-hero">
+    <div class="hexbtn h2">
+      <svg class="hexsvg" viewBox="0 0 100 112" preserveAspectRatio="none">
+        <path class="hexfill" fill="url(#hexgrad2)" d="M46,4.3 Q50,2 54,4.3 L92.5,26.5 Q96.5,28.8 96.5,33.5 L96.5,78.5 Q96.5,83.2 92.5,85.5 L54,107.7 Q50,110 46,107.7 L7.5,85.5 Q3.5,83.2 3.5,78.5 L3.5,33.5 Q3.5,28.8 7.5,26.5 Z"/>
+        <path class="hexcap" fill="url(#hexcap2)" d="M46,4.3 Q50,2 54,4.3 L92.5,26.5 Q96.5,28.8 96.5,33.5 L3.5,33.5 Q3.5,28.8 7.5,26.5 Z"/>
+        <path class="hexborder" d="M46,4.3 Q50,2 54,4.3 L92.5,26.5 Q96.5,28.8 96.5,33.5 L96.5,78.5 Q96.5,83.2 92.5,85.5 L54,107.7 Q50,110 46,107.7 L7.5,85.5 Q3.5,83.2 3.5,78.5 L3.5,33.5 Q3.5,28.8 7.5,26.5 Z"/>
+      </svg>
+      <span class="hexnum">02</span>
+      <span class="hextext">당직원</span>
+    </div>
+    <div class="hexdesc">AI가 1차 분류·근거·대응절차·비상연락처를 준비해 판단 부담을 덜어드립니다. 검토 후 <b>확정·이송</b>해야 처리자에게 전달됩니다.</div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h2>직접 접수 (전화·방문) <span class="sub">통화하며 그대로 받아 적으세요</span></h2>
+      <div class="row">
+        <div>
+          <label for="dChannel">접수 경로</label>
+          <select id="dChannel"><option>전화</option><option>방문</option><option>기관 이첩</option></select>
+        </div>
+        <div>
+          <label for="dName">민원인</label>
+          <input type="text" id="dName" placeholder="성명 또는 '미상'">
+        </div>
+        <div>
+          <label for="dPhone">회신 연락처</label>
+          <input type="text" id="dPhone" placeholder="010-0000-0000">
+        </div>
+      </div>
+      <label for="dLoc">발생 장소</label>
+      <input type="text" id="dLoc" placeholder="예: 동안구 관양동 ○○빌라 앞">
+      <label for="dBody">통화 내용</label>
+      <textarea id="dBody" placeholder="문장이 완벽하지 않아도 AI가 정리합니다."></textarea>
+      <div class="samples">
+        <button data-ds="0">예시① 수도관 파열</button>
+        <button data-ds="1">예시② 심야 소음</button>
+        <button data-ds="2">예시③ 화재 신고</button>
+        <button data-ds="3">예시④ 주취 전화</button>
+      </div>
+      <button class="btn primary" id="dClassify">AI 1차 분류</button>
+      <div id="dResult"></div>
+    </div>
+    <div class="card">
+      <h2>검토 대기 큐 <span class="sub">민원인 셀프접수 · 재연결 요청이 이곳에 들어옵니다</span></h2>
+      <div class="queue-notice">📌 민원인이 접수한 건은 이곳에 먼저 도착합니다. 줄을 눌러 내용을 확인한 뒤 <b>확정·이송</b>을 눌러야 처리자(담당부서)에게 전달됩니다.</div>
+      <div id="dutyQueue"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 처리자 ================= -->
+<section class="tab" id="tab-handler">
+  <div class="backbar">
+    <button class="back" data-go="home">← 역할 선택</button>
+    <button class="btn ghost small" data-go="policy" style="margin-left:auto">📊 정책환류 보기</button>
+  </div>
+  <div class="role-hero">
+    <div class="hexbtn h3">
+      <svg class="hexsvg" viewBox="0 0 100 112" preserveAspectRatio="none">
+        <path class="hexfill" fill="url(#hexgrad3)" d="M46,4.3 Q50,2 54,4.3 L92.5,26.5 Q96.5,28.8 96.5,33.5 L96.5,78.5 Q96.5,83.2 92.5,85.5 L54,107.7 Q50,110 46,107.7 L7.5,85.5 Q3.5,83.2 3.5,78.5 L3.5,33.5 Q3.5,28.8 7.5,26.5 Z"/>
+        <path class="hexcap" fill="url(#hexcap3)" d="M46,4.3 Q50,2 54,4.3 L92.5,26.5 Q96.5,28.8 96.5,33.5 L3.5,33.5 Q3.5,28.8 7.5,26.5 Z"/>
+        <path class="hexborder" d="M46,4.3 Q50,2 54,4.3 L92.5,26.5 Q96.5,28.8 96.5,33.5 L96.5,78.5 Q96.5,83.2 92.5,85.5 L54,107.7 Q50,110 46,107.7 L7.5,85.5 Q3.5,83.2 3.5,78.5 L3.5,33.5 Q3.5,28.8 7.5,26.5 Z"/>
+      </svg>
+      <span class="hexnum">03</span>
+      <span class="hextext">처리자</span>
+    </div>
+    <div class="hexdesc">당직원이 확정·이송한 민원을 AI가 <b>접수일시·핵심요지·분류근거·우선순위</b>로 요약해 전달합니다. 출근 즉시 업무에 착수할 수 있습니다.</div>
+  </div>
+  <div class="filterbar">
+    <button class="chip on" data-f="all">전체</button>
+    <button class="chip" data-f="s0">대기</button>
+    <button class="chip" data-f="s1">처리중</button>
+    <button class="chip" data-f="s2">완료</button>
+    <span style="margin-left:auto;font-size:12px;color:var(--faint)">우선순위(P1→P4) 자동 정렬</span>
+    <button class="btn ghost small" id="btnCopyAll">아침 브리핑 전체 복사</button>
+  </div>
+  <div id="ticketList"></div>
+</section>
+
+<!-- ================= 정책환류 ================= -->
+<section class="tab" id="tab-policy">
+  <div class="backbar">
+    <button class="back" data-go="home">← 역할 선택</button>
+    <span class="rolename">📊 정책환류</span>
+  </div>
+  <div class="stats">
+    <div class="stat k1"><div class="n" id="st1">0</div><div class="l">① 긴급 출동 연계</div></div>
+    <div class="stat k2"><div class="n" id="st2">0</div><div class="l">② 당직 즉시 안내</div></div>
+    <div class="stat k3"><div class="n" id="st3">0</div><div class="l">③ 익일 부서 이송</div></div>
+    <div class="stat k4"><div class="n" id="st4">0</div><div class="l">④ 비민원·장난</div></div>
+  </div>
+  <div class="bar-h" id="statBar" aria-hidden="true"></div>
+  <div class="card" style="margin-bottom:16px">
+    <h2>AI 정책 개선 제언 <span class="sub">응대 데이터 → 정책·예산·인력 되먹임</span></h2>
+    <div id="insightBox"><div class="empty" style="padding:30px">데이터가 쌓이면 반복 패턴을 분석해 제언을 생성합니다.</div></div>
+    <div class="actions">
+      <button class="btn ghost" id="btnAiInsight">생성형 AI 심화 제언 (API 키 필요)</button>
+      <button class="btn ghost" id="btnExport">환류 데이터 내보내기 (JSON)</button>
+    </div>
+    <p class="hint">AI 재분류(당직원 불동의) 이력도 함께 기록되어 분류 모델 개선의 학습 데이터로 환류됩니다.</p>
+  </div>
+  <div class="card" id="insightDetailCard" hidden>
+    <h2 id="insightDetailTitle">상세 내용</h2>
+    <div id="insightDetail"></div>
+    <div class="actions"><button class="btn ghost small" id="btnCloseDetail">닫기</button></div>
+  </div>
+</section>
+
+<!-- ================= 설정 ================= -->
+<section class="tab" id="tab-settings">
+  <div class="backbar">
+    <button class="back" data-go="home">← 역할 선택</button>
+    <span class="rolename">⚙ 설정</span>
+  </div>
+  <div class="card" style="max-width:560px">
+    <h2>AI 연결</h2>
+    <label for="apiKey">Gemini API 키 (선택)</label>
+    <input type="password" id="apiKey" placeholder="AIza...">
+    <p class="hint">키는 이 브라우저의 localStorage에만 저장됩니다. 키가 없어도 내장 규칙엔진으로 전 기능이 동작해 인터넷 없는 심사장에서도 시연 가능합니다.</p>
+    <div class="actions">
+      <button class="btn ghost" id="btnSaveKey">키 저장</button>
+      <button class="btn ghost" id="btnDelKey">키 삭제</button>
+    </div>
+  </div>
+  <div class="card" style="max-width:560px;margin-top:16px">
+    <h2>데이터</h2>
+    <div class="actions" style="margin-top:0">
+      <button class="btn ghost" id="btnDemo">시연용 예시 데이터 넣기</button>
+      <button class="btn ghost" id="btnWipe">전체 데이터 초기화</button>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div>판올림 <b id="buildCount">0</b>회 · 만든 사람 — 안양시 <b>신성장전략과 이동규</b> · <b>sangmanh@korea.kr</b></div>
+</footer>
+
+<div id="modal" role="dialog" aria-label="공문 초안">
+  <div class="paper"><div id="docBody"></div>
+    <div class="bar">
+      <button class="btn ghost small" id="btnDocCopy">본문 복사</button>
+      <button class="btn ghost small" id="btnDocClose">닫기</button>
+    </div>
+  </div>
+</div>
+<div id="imgview"><img id="imgviewImg" alt="첨부 사진 확대"></div>
+<div id="toast" role="status"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   당직등 v3 — 3주체 균형 설계
+   민원인: AI 1차 응대(즉시안내/접수번호·예정일/필터+재연결 보장)
+   당직원: AI 1차 분류 + SOP + 비상연락처, 불동의 시 재분류(사람 최종)
+   처리자: 우선순위 요약카드(접수일시·핵심·근거·우선순위) 즉시 착수
+   ============================================================ */
+const CATS={
+ 1:{name:"① 긴급 출동 연계",cls:"c1",pri:1,desc:"생명·신체·재산에 즉각 위험. 119/112 연계가 최우선입니다."},
+ 2:{name:"② 당직 즉시 안내",cls:"c2",pri:2,desc:"당직 단계에서 안내 또는 유관기관 연결로 해소 가능한 건입니다."},
+ 3:{name:"③ 익일 부서 이송",cls:"c3",pri:3,desc:"긴급성이 낮아 업무시간에 담당부서가 처리할 건입니다."},
+ 4:{name:"④ 비민원 · 응대 종료",cls:"c4",pri:4,desc:"행정 민원으로 보기 어려운 통화입니다. 표준 종료 절차로 응대하세요."}
+};
+const PRI={1:"P1 긴급",2:"P2 높음",3:"P3 보통",4:"P4 낮음"};
+const CONTACTS=[
+ {n:"소방·구조·구급",v:"119"},{n:"경찰",v:"112"},
+ {n:"당직 기동반(예시)",v:"내선 1234",sub:1},{n:"상하수도 비상(예시)",v:"031-8045-0000",sub:1},
+ {n:"도로 비상(예시)",v:"031-8045-0001",sub:1},{n:"한국전력",v:"123",sub:1},
+ {n:"가스 안전",v:"1544-4500",sub:1},{n:"재난상황실(예시)",v:"031-8045-0002",sub:1}
+];
+const SOP={
+ 1:["통화를 끊지 말고 민원인의 <b>정확한 위치</b>(주소·건물·층)를 먼저 확보",
+    "위험 유형에 따라 <b>119(화재·구조·구급) 또는 112(범죄)</b>로 3자 연결하거나 즉시 신고 대행",
+    "인명 위험 여부, 대피 가능 여부를 확인하고 신고 접수번호를 기록",
+    "시 소관 시설 관련 시 <b>당직 기동반/유관 사업소</b>에 동시 통보 (아래 비상연락처)",
+    "저장 시 이력이 기록되고 P1 우선순위로 처리자에게 전달됩니다"],
+ 2:["민원 요지를 복창하여 확인 (\"○○ 말씀이시죠?\")",
+    "아래 <b>안내 스크립트</b>를 그대로 읽어 안내하거나 유관기관 연락처를 제공",
+    "현장 확인이 필요하면 당직 기동반 출동 여부를 판단",
+    "안내로 종결 시 종결 처리, 후속 확인이 필요하면 이송"],
+ 3:["\"업무시간에 담당부서가 처리 후 회신드린다\"고 안내하고 <b>회신 연락처</b>를 확인",
+    "긴급 악화 소지가 없는지 한 번 더 확인",
+    "요약카드·공문 초안 확인 후 <b>이송</b> — 아침에 담당부서가 바로 접수합니다"],
+ 4:["정중하지만 단호하게: \"행정 민원 외 통화는 응대가 어렵습니다\"",
+    "주취·반복 전화는 <b>통화 일시·횟수</b>를 기록",
+    "욕설·협박 시 \"통화가 녹음되며 법적 조치될 수 있음\"을 고지 후 종료",
+    "단, 실제 위급 호소가 있으면 즉시 <b>①긴급으로 재분류</b>하세요 — 배제 금지 원칙"]
+};
+const RULES=[
+ {c:1,dept:"소방(119) 연계",kw:["불이","화재","연기","타는 냄새","가스 냄새","가스가 새","폭발","쓰러져","의식이 없","숨을 안","숨을 못","심정지","피가","크게 다쳤","119"]},
+ {c:1,dept:"경찰(112) 연계",kw:["폭행","때리","흉기","칼을","도둑","절도","침입","납치","협박당","스토킹","112"]},
+ {c:1,dept:"안전총괄과",kw:["싱크홀","도로가 꺼","붕괴","무너지","축대","옹벽","가로수가 쓰러","전신주","감전"]},
+ {c:2,dept:"상하수도과",kw:["수도관","물이 터","단수","물이 안 나","누수","하수 역류","맨홀"]},
+ {c:2,dept:"도로과",kw:["신호등","가로등","도로에 낙하물","동물 사체","포트홀","도로 파임","도로가 파","로드킬","구멍이 파"]},
+ {c:2,dept:"환경과",kw:["악취가 심","기름이 유출","하천에"]},
+ {c:2,dept:"경찰(112) 안내",kw:["시끄러","소음이","고성방가","싸우는 소리","술 마시고 소란"]},
+ {c:3,dept:"자원순환과",kw:["쓰레기","무단투기","폐기물","재활용","무단으로 버리"]},
+ {c:3,dept:"도로과",kw:["불법주차","주정차","주차 단속"]},
+ {c:3,dept:"건축과",kw:["공사 소음","공사장","건축","무허가"]},
+ {c:3,dept:"민원봉사과",kw:["증명서","서류","발급","여권","전입","문의","궁금"]},
+ {c:4,dept:"—",kw:["술 취","횡설수설","욕설","장난","심심해서","말동무","외로워서","번호 잘못"]}
+];
+const GUIDE={ // 민원인 즉시안내(규칙엔진용)
+ "상하수도과":"상하수도 비상근무반에 즉시 전달됩니다. 누수·단수 응급조치반이 확인 예정이며, 실내 침수 위험 시 계량기 밸브를 잠가 주세요.",
+ "도로과":"도로 비상근무반에 전달됩니다. 야간 통행 위험 구간은 순찰 시 안전조치(라바콘 등)가 우선 시행됩니다.",
+ "환경과":"환경 담당 비상연락망으로 전달됩니다. 확산 우려가 있으면 접근을 피하고 위치를 정확히 알려주세요.",
+ "경찰(112) 안내":"소음·소란은 경찰(112) 소관으로 즉시 신고하시면 현장 출동이 가장 빠릅니다. 시 당직실에도 기록해 반복 발생 시 관리 대책에 반영하겠습니다.",
+ "_기본":"당직실에 접수되었습니다. 내용을 확인해 필요한 조치를 진행하겠습니다."
+};
+function ruleClassify(text){
+  let best=null;
+  for(const r of RULES){
+    const hits=r.kw.filter(k=>text.includes(k));
+    if(hits.length&&(!best||hits.length>best.hits.length))best={...r,hits};
+  }
+  if(!best)best={c:3,dept:"민원봉사과(분류 필요)",hits:[]};
+  const f=text.replace(/\s+/g," ").trim();
+  return {category:best.c,dept:best.dept,
+    title:(f.length>28?f.slice(0,28)+"…":f)||"제목 없음",
+    summary:f.length>140?f.slice(0,140)+"…":f,
+    action:best.c===1?"119/112 및 유관 사업소 즉시 연계, 조치 결과 기록"
+         :best.c===2?"당직 단계 안내 완료 여부 확인, 필요 시 현장 재확인"
+         :best.c===3?"업무시간 내 현장 확인 및 민원인 회신"
+         :"응대 종료. 반복 발생 시 패턴 기록",
+    script:best.c===2?"\"말씀하신 사항은 당직실에서 "+best.dept+" 비상연락망으로 즉시 전달하겠습니다. 위험 상황이 생기면 바로 다시 연락 주십시오.\"":"",
+    guide:GUIDE[best.dept]||GUIDE["_기본"],
+    reason:"키워드 일치: "+(best.hits.join(", ")||"해당 없음(기본 이송 처리)"),
+    engine:"rule"};
+}
+async function geminiCall(parts){
+  const key=localStorage.getItem("dj_apikey");
+  const res=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+encodeURIComponent(key),{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({contents:[{parts}]})});
+  if(!res.ok)throw new Error("API "+res.status);
+  const data=await res.json();
+  return (data.candidates?.[0]?.content?.parts?.[0]?.text||"").replace(/```json|```/g,"").trim();
+}
+async function aiClassify(text,loc,imgDataUrl,channel,audience){
+  if(!localStorage.getItem("dj_apikey"))return ruleClassify(text||"(사진 신고)");
+  const prompt=`너는 한국 지방자치단체(안양시청) 당직실의 야간민원 AI다. 접수 채널: ${channel}. 발생 장소: ${loc||"미상"}.
+분류: 1=긴급출동연계(생명·안전, 119/112), 2=당직즉시안내, 3=익일부서이송, 4=비민원(주취·장난·욕설)
+신고 내용: """${text||"(텍스트 없음, 첨부 사진 분석 요망)"}"""
+${imgDataUrl?"첨부 현장 사진을 함께 분석하라.":""}
+JSON만 출력(백틱 금지):
+{"category":숫자,"dept":"추천 처리부서 또는 119/112 연계","title":"제목(20자 내)","summary":"처리자가 3초에 파악할 요지(2문장 내)","action":"필요 조치(1문장)","script":"category 2일 때 당직원용 안내 멘트, 아니면 빈문자열","guide":"민원인에게 보여줄 정중한 즉시 안내문(2문장, 존댓말)","reason":"분류 근거(1문장)"}`;
+  const parts=[{text:prompt}];
+  if(imgDataUrl){const m=imgDataUrl.match(/^data:(image\/\w+);base64,(.+)$/);if(m)parts.push({inline_data:{mime_type:m[1],data:m[2]}});}
+  const p=JSON.parse(await geminiCall(parts));
+  p.category=Math.min(4,Math.max(1,parseInt(p.category)||3));
+  p.engine="ai";
+  return p;
+}
+
+/* ---------- 상태 ---------- */
+let tickets=JSON.parse(localStorage.getItem("dj_tickets")||"[]");
+
+/* ---------- 더미 민원 데이터 (게시판 연동) ----------
+   실제 배포 시 dummy_complaints.json 을 서버 API 응답으로 교체하면 됩니다.
+   file:// 로 열어 fetch 가 차단되는 경우를 대비해 동일 데이터를 내장(폴백)합니다. */
+const DUMMY_FALLBACK=[{"rcpt": "DJ-260710-001", "at": "07.10 23:14", "channel": "게시판", "source": "민원인 셀프접수", "category": 3, "dept": "도로과", "priority": 3, "stage": "duty", "status": 0, "name": "김○○", "phone": "010-2345-6789", "loc": "만안구 안양동 ○○공원 산책로", "title": "공원 산책로 가로등 소등", "summary": "공원 산책로 가로등이 며칠째 꺼져 있어 야간 통행이 위험함. 언제 고쳐지는지 문의.", "action": "업무시간 내 현장 확인 및 민원인 회신", "reason": "키워드 일치: 가로등", "body": "공원 산책로 가로등이 며칠째 꺼져 있어요. 밤에 너무 어두운데 언제 고쳐지는지 궁금합니다. 여성분들 지나다니기 무섭다고 합니다.", "history": [{"at": "07.10 23:14", "ev": "게시판 셀프접수 (민원인)"}, {"at": "07.10 23:14", "ev": "AI 1차 분류: ③ 익일 부서 이송 → 도로과 (규칙엔진)"}]}, {"rcpt": "DJ-260710-002", "at": "07.10 23:41", "channel": "메신저(카카오톡)", "source": "민원인 셀프접수", "category": 2, "dept": "상하수도과", "priority": 2, "stage": "duty", "status": 0, "name": "이○○", "phone": "010-9876-5432", "loc": "동안구 관양동 ○○빌라 앞", "title": "골목 누수로 도로 침수", "summary": "골목 수도관 누수 추정, 도로에 물이 차오르고 지하로 유입 우려. 당직 즉시 안내 필요.", "action": "당직 단계 안내 완료 여부 확인, 필요 시 현장 재확인", "reason": "키워드 일치: 누수, 물이 터", "body": "카카오톡 안양시 채널로 문의드려요. 골목에서 수도관이 터졌는지 물이 콸콸 솟아서 도로가 물바다예요. 지하로도 물이 들어가는 것 같아요.", "history": [{"at": "07.10 23:41", "ev": "메신저(카카오톡) 셀프접수 (민원인)"}, {"at": "07.10 23:41", "ev": "AI 1차 분류: ② 당직 즉시 안내 → 상하수도과 (규칙엔진)"}]}, {"rcpt": "DJ-260711-003", "at": "07.11 00:07", "channel": "사진신고", "source": "민원인 셀프접수", "category": 3, "dept": "자원순환과", "priority": 3, "stage": "duty", "status": 0, "name": "박○○", "phone": "", "loc": "만안구 박달동 재활용 수거장 옆", "title": "폐기물 상습 무단투기 (사진)", "summary": "재활용 수거장 옆에 가구·폐기물 상습 무단투기. 사진 첨부. CCTV 확인·단속 요청. 긴급성 낮음.", "action": "업무시간 내 현장 확인 및 민원인 회신", "reason": "키워드 일치: 무단투기, 폐기물", "body": "누가 밤마다 수거장 옆에 가구랑 폐기물을 무단으로 버리고 갑니다. 사진 첨부합니다. CCTV 확인해서 단속 좀 해주세요. 급한 건 아니고 낮에 처리해 주시면 됩니다.", "history": [{"at": "07.11 00:07", "ev": "사진신고 셀프접수 (민원인)"}, {"at": "07.11 00:07", "ev": "AI 1차 분류: ③ 익일 부서 이송 → 자원순환과 (규칙엔진)"}]}, {"rcpt": "DJ-260711-004", "at": "07.11 00:52", "channel": "메신저(라인)", "source": "민원인 셀프접수", "category": 1, "reconnect": true, "dept": "소방(119) 연계", "priority": 1, "stage": "duty", "status": 0, "name": "미상", "phone": "010-1111-2222", "loc": "만안구 석수동 상가건물 2층", "title": "상가 2층 연기·타는 냄새", "summary": "상가 2층에서 타는 냄새와 연기 발생. 내부 인원 확인 불가. 긴급 재연결 요청 건.", "action": "119/112 및 유관 사업소 즉시 연계, 조치 결과 기록", "reason": "키워드 일치: 타는 냄새, 연기", "body": "라인으로 신고해요. 건물 2층에서 타는 냄새가 나고 연기가 조금씩 나오는 것 같아요! 사람이 안에 있는지 모르겠어요! 처음에 장난인 줄 알고 필터됐는데 진짜예요.", "history": [{"at": "07.11 00:50", "ev": "메신저(라인) 셀프접수 (민원인)"}, {"at": "07.11 00:50", "ev": "AI 1차 분류: ④ 비민원 (오분류)"}, {"at": "07.11 00:52", "ev": "민원인 재연결 요청 — 배제 방지 원칙에 따라 당직 큐 최우선 재배치"}]}, {"rcpt": "DJ-260710-005", "at": "07.10 22:30", "channel": "전화", "source": "당직 직접접수", "category": 2, "dept": "도로과", "priority": 2, "stage": "handover", "status": 0, "name": "정○○", "phone": "010-3333-4444", "loc": "동안구 호계동 ○○사거리", "title": "사거리 신호등 고장", "summary": "호계동 ○○사거리 신호등 점멸 고장으로 야간 사고 위험. 당직 안내 후 도로과 이송.", "action": "당직 단계 안내 완료 여부 확인, 필요 시 현장 재확인", "reason": "키워드 일치: 신호등", "body": "사거리 신호등이 고장 나서 계속 깜빡거리기만 해요. 차들이 서로 눈치보다가 사고 날 뻔했어요.", "history": [{"at": "07.10 22:30", "ev": "전화 접수 (당직 직접접수)"}, {"at": "07.10 22:31", "ev": "AI 1차 분류: ② 당직 즉시 안내 → 도로과 (규칙엔진)"}, {"at": "07.10 22:33", "ev": "당직원 확정 — 도로과 이송 (우선순위 P2 높음)"}]}, {"rcpt": "DJ-260710-006", "at": "07.10 21:48", "channel": "게시판", "source": "민원인 셀프접수", "category": 3, "dept": "환경과", "priority": 3, "stage": "handover", "status": 1, "name": "최○○", "phone": "010-5555-6666", "loc": "만안구 안양동 ○○상가 뒤편", "title": "상가 사업장 상시 소음", "summary": "상가 사업장에서 밤새 기계 소음 상시 발생. 당직원이 일회성 소란 아닌 상시 소음으로 재분류하여 환경과 이송.", "action": "업무시간 내 현장 확인 및 민원인 회신", "reason": "키워드 일치: 소음이", "override": {"from": "② 당직 즉시 안내", "to": "③ 익일 부서 이송", "why": "일회성 소란 아닌 상시 사업장 소음으로 판단"}, "body": "상가에서 밤새 기계 돌아가는 소음이 나요. 며칠째 계속입니다. 잠을 못 자겠어요.", "history": [{"at": "07.10 21:48", "ev": "게시판 셀프접수 (민원인)"}, {"at": "07.10 21:49", "ev": "AI 1차 분류: ② 당직 즉시 안내 → 경찰(112) 안내 (규칙엔진)"}, {"at": "07.10 21:55", "ev": "당직원 재분류: ② 당직 즉시 안내 → ③ 익일 부서 이송 (사유: 일회성 소란 아닌 상시 사업장 소음으로 판단)"}, {"at": "07.10 21:56", "ev": "당직원 확정 — 환경과 이송 (우선순위 P3 보통)"}, {"at": "07.11 09:12", "ev": "담당부서 처리 시작"}]}, {"rcpt": "DJ-260709-007", "at": "07.09 23:20", "channel": "메신저(네이버톡톡)", "source": "민원인 셀프접수", "category": 3, "dept": "자원순환과", "priority": 3, "stage": "handover", "status": 2, "name": "한○○", "phone": "010-7777-8888", "loc": "동안구 비산동 ○○사거리", "title": "가로수 전정 가지 방치", "summary": "가로수 전정 후 잘린 가지가 인도에 방치되어 보행 불편. 자원순환과 수거 완료 회신.", "action": "업무시간 내 현장 확인 및 민원인 회신", "reason": "키워드 일치: 쓰레기", "body": "가로수 자른 가지들이 인도에 며칠째 그대로 쌓여 있어요. 유모차나 휠체어가 못 지나가요.", "history": [{"at": "07.09 23:20", "ev": "메신저(네이버톡톡) 셀프접수 (민원인)"}, {"at": "07.09 23:21", "ev": "AI 1차 분류: ③ 익일 부서 이송 → 자원순환과 (규칙엔진)"}, {"at": "07.09 23:25", "ev": "당직원 확정 — 자원순환과 이송 (우선순위 P3 보통)"}, {"at": "07.10 09:40", "ev": "담당부서 처리 시작"}, {"at": "07.10 14:10", "ev": "처리 완료 — 민원인 회신"}]}];
+async function loadDummy(){
+  let data=null;
+  try{
+    const res=await fetch("dummy_complaints.json",{cache:"no-store"});
+    if(res.ok){const j=await res.json();data=j.tickets;}
+  }catch(e){/* file:// CORS 등 → 폴백 */}
+  if(!data)data=DUMMY_FALLBACK;
+  return data.map((t,i)=>({
+    ...t,
+    id:t.id||(1000+i),
+    priority:t.priority||(CATS[t.category]?CATS[t.category].pri:3),
+    history:t.history||[]
+  }));
+}
+async function seedDummyIfEmpty(){
+  if(localStorage.getItem("dj_dummy_loaded")==="1")return;
+  const dummy=await loadDummy();
+  // 이미 있는 접수번호는 건너뜀
+  const have=new Set(tickets.map(t=>t.rcpt));
+  const add=dummy.filter(t=>!have.has(t.rcpt));
+  if(add.length){tickets=[...add,...tickets];}
+  localStorage.setItem("dj_dummy_loaded","1");
+  save();
+}
+let lastDuty=null,cImg=null,cChannel="게시판";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+function save(){try{localStorage.setItem("dj_tickets",JSON.stringify(tickets));}catch(e){toast("저장 공간 부족 — 오래된 사진을 정리하세요");}refreshBadges();}
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(t._x);t._x=setTimeout(()=>t.classList.remove("show"),2600);}
+function now(){const d=new Date();const p=n=>String(n).padStart(2,"0");return `${p(d.getMonth()+1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;}
+function log(t,ev){(t.history=t.history||[]).push({at:now(),ev});}
+function newRcpt(){
+  const d=new Date(),p=n=>String(n).padStart(2,"0");
+  const key="dj_seq_"+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate());
+  const n=(parseInt(localStorage.getItem(key))||0)+1;
+  localStorage.setItem(key,n);
+  return `DJ-${String(d.getFullYear()).slice(2)}${p(d.getMonth()+1)}${p(d.getDate())}-${String(n).padStart(3,"0")}`;
+}
+function dueDate(){ // 다음 근무일 + 2일
+  const d=new Date(); d.setDate(d.getDate()+1);
+  while(d.getDay()===0||d.getDay()===6)d.setDate(d.getDate()+1);
+  d.setDate(d.getDate()+2);
+  while(d.getDay()===0||d.getDay()===6)d.setDate(d.getDate()+1);
+  return `${d.getMonth()+1}. ${d.getDate()}.(${"일월화수목금토"[d.getDay()]})`;
+}
+function mkTicket(r,extra){
+  const t={...r,...extra,at:now(),id:Date.now()+Math.floor(Math.random()*99),
+    rcpt:newRcpt(),priority:r.priority||CATS[r.category].pri,history:[],override:null};
+  return t;
+}
+
+/* ---------- 화면 전환/시계 ---------- */
+function go(tab){
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
+  $("#tab-"+tab).classList.add("on");
+  window.scrollTo(0,0);
+  if(tab==="duty")renderQueue();
+  if(tab==="handler")renderTickets();
+  if(tab==="policy"){renderStats();renderInsights();}
+}
+// 역할 카드 + 뒤로가기 + 설정/환류 진입 버튼 모두 data-go 로 통일
+document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.go)));
+// 로고(당직등) 클릭 → 첫 화면
+$("#homeBrand").addEventListener("click",()=>go("home"));
+setInterval(()=>{const d=new Date();$("#clock").textContent=d.toLocaleString("ko-KR",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false});},1000);
+
+/* ============================================================
+   민원인 포털
+   ============================================================ */
+document.querySelectorAll("#cChannels button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#cChannels button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");cChannel=b.dataset.ch;
+  const isMsg=cChannel==="메신저";
+  $("#cImgzone").hidden=cChannel!=="사진신고";
+  $("#cMsgzone").hidden=!isMsg;
+  // 메신저 연동 선택 시 이 화면의 작성 폼은 숨김 (앱에서 직접 접수)
+  $("#cFormZone").hidden=isMsg;
+}));
+document.querySelectorAll("#cMsgApps .mapp").forEach(a=>a.addEventListener("click",()=>{
+  toast(a.dataset.app+" 앱으로 이동합니다 — 안양시 공식 채널에서 신고를 접수하세요");
+}));
+$("#cDrop").addEventListener("click",()=>$("#cImgFile").click());
+$("#cImgFile").addEventListener("change",e=>{
+  const f=e.target.files[0];if(!f)return;
+  const img=new Image();
+  img.onload=()=>{
+    const max=800,sc=Math.min(1,max/Math.max(img.width,img.height));
+    const cv=document.createElement("canvas");cv.width=Math.round(img.width*sc);cv.height=Math.round(img.height*sc);
+    cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+    cImg=cv.toDataURL("image/jpeg",0.7);
+    $("#cImgPrev").src=cImg;$("#cImgPrev").hidden=false;
+    $("#cDrop").textContent="사진이 첨부되었습니다 — 클릭하여 변경";
+    URL.revokeObjectURL(img.src);
+  };
+  img.src=URL.createObjectURL(f);
+});
+const CSAMPLES=[
+ {ch:"온라인",loc:"만안구 안양동 ○○공원 산책로",body:"공원 산책로 가로등이 며칠째 꺼져 있어요. 밤에 너무 어두운데 언제 고쳐지는지 궁금합니다."},
+ {ch:"온라인",loc:"만안구 박달동 재활용 수거장 옆",body:"누가 밤마다 수거장 옆에 가구랑 폐기물을 무단으로 버리고 갑니다. CCTV 확인해서 단속해 주세요. 회신 부탁드립니다."},
+ {ch:"온라인",loc:"만안구 석수동 상가건물",body:"건물 2층에서 타는 냄새가 나고 연기가 나오는 것 같아요! 사람이 안에 있는지 모르겠어요!"},
+ {ch:"온라인",loc:"미상",body:"ㅋㅋㅋ 심심한데 시장님 좀 바꿔주세요 장난입니다"}
+];
+document.querySelectorAll("[data-cs]").forEach(b=>b.addEventListener("click",()=>{
+  const s=CSAMPLES[b.dataset.cs];
+  $("#cLoc").value=s.loc;$("#cBody").value=s.body;$("#cName").value="시민";$("#cPhone").value="";
+}));
+$("#cSubmit").addEventListener("click",async()=>{
+  const body=$("#cBody").value.trim();
+  if(!body&&!cImg){toast("내용 또는 사진을 입력해 주세요");$("#cBody").focus();return;}
+  const btn=$("#cSubmit");btn.disabled=true;btn.innerHTML='<span class="spin"></span> AI가 확인 중…';
+  let r;
+  try{r=await aiClassify(body,$("#cLoc").value.trim(),cImg,cChannel,"citizen");}
+  catch(e){console.error(e);r=ruleClassify(body||"(사진 신고)");}
+  btn.disabled=false;btn.textContent="접수하기";
+  $("#cAiTag").textContent=r.engine==="ai"?"GEMINI AI":"RULE ENGINE";
+  $("#cAiTag").classList.toggle("live",r.engine==="ai");
+  const chLabel=cChannel;
+  const t=mkTicket(r,{loc:$("#cLoc").value.trim(),name:$("#cName").value.trim()||"미상",
+    phone:$("#cPhone").value.trim(),channel:chLabel,body,img:cImg,source:"민원인 셀프접수"});
+  log(t,`${chLabel} 셀프접수 (민원인)`);
+  log(t,`AI 1차 분류: ${CATS[t.category].name} → ${t.dept} (${t.engine==="ai"?"생성형 AI":"규칙엔진"})`);
+  renderCitizenResult(t);
+  // 초기화
+  cImg=null;$("#cImgPrev").hidden=true;$("#cImgFile").value="";
+  $("#cDrop").textContent="클릭하여 사진 선택 — AI가 사진을 함께 분석합니다";
+});
+function renderCitizenResult(t){
+  const box=$("#cResult");
+  if(t.category===1){ // 긴급
+    t.stage="duty";t.status=0;t.priority=1;
+    log(t,"긴급 건 — 당직원 검토 큐 최우선 배치");
+    tickets.unshift(t);save();
+    box.innerHTML=`
+      <div class="result-lamp c1"><div class="dot"></div><div>
+        <div class="t1">긴급 상황으로 확인됩니다</div>
+        <div class="t2">지금 바로 <b style="color:var(--red)">119(화재·구조·구급) 또는 112(범죄)</b>에 전화하세요. 신고 내용은 당직실에 최우선으로 전달되었습니다.</div>
+      </div></div>
+      <div class="callout warn"><b>접수번호 <span class="rcpt">${t.rcpt}</span></b><br>당직원이 즉시 확인합니다. 위치가 바뀌면 119/112에 다시 알려주세요.</div>`;
+  }else if(t.category===4){ // 필터 + 재연결 보장
+    t.stage="closed";t.status=2;
+    log(t,"AI 필터: 비민원 판정 — 기록 후 종결 (재연결 경로 안내)");
+    tickets.unshift(t);save();
+    box.innerHTML=`
+      <div class="result-lamp c4"><div class="dot"></div><div>
+        <div class="t1">행정 민원으로 확인되지 않았습니다</div>
+        <div class="t2">장난·허위 신고는 응대가 어렵습니다. 통화·접수 내역은 기록됩니다.</div>
+      </div></div>
+      <div class="callout"><b>혹시 실제 위급한 상황이신가요?</b><br>AI 판단이 잘못되었을 수 있습니다. 아래 버튼을 누르면 당직원에게 <b>최우선으로 직접 연결</b>됩니다.</div>
+      <div class="actions"><button class="btn danger" id="btnReconnect">실제 긴급상황입니다 — 당직원 연결</button></div>`;
+    $("#btnReconnect").addEventListener("click",()=>{
+      t.stage="duty";t.status=0;t.priority=1;t.reconnect=true;
+      log(t,"민원인 재연결 요청 — 배제 방지 원칙에 따라 당직 큐 최우선 재배치");
+      save();
+      box.innerHTML=`<div class="callout warn"><b>당직원에게 최우선 연결되었습니다.</b><br>접수번호 <span class="rcpt">${t.rcpt}</span> — 당직원이 즉시 확인합니다. 급박한 위험은 119/112에도 함께 신고해 주세요.</div>`;
+      toast("재연결 요청이 당직 큐 최상단에 등록되었습니다");
+    });
+  }else if(t.category===2){ // AI 즉시 안내
+    t.stage="duty";t.status=0;
+    log(t,"AI 즉시 안내 제공 — 당직원 확인 대기");
+    tickets.unshift(t);save();
+    box.innerHTML=`
+      <div class="result-lamp c2"><div class="dot"></div><div>
+        <div class="t1">확인했습니다 — 즉시 안내드립니다</div>
+        <div class="t2">${esc(t.guide||GUIDE["_기본"])}</div>
+      </div></div>
+      <div class="callout ok"><b>접수번호 <span class="rcpt">${t.rcpt}</span></b><br>당직실에 전달되어 당직원이 확인합니다. 위 번호로 처리 상황을 조회할 수 있습니다.</div>`;
+  }else{ // 고충민원 → 접수번호+예정일
+    t.stage="duty";t.status=0;
+    log(t,"고충민원 접수 — 당직원 검토 후 담당부서 이송 예정");
+    tickets.unshift(t);save();
+    box.innerHTML=`
+      <div class="result-lamp c3"><div class="dot"></div><div>
+        <div class="t1">고충민원이 정식 접수되었습니다</div>
+        <div class="t2">담당부서(${esc(t.dept)})가 업무시간에 확인 후 처리합니다.</div>
+      </div></div>
+      <div class="callout ok">
+        <b>접수번호 <span class="rcpt">${t.rcpt}</span></b><br>
+        처리예정일: <b>${dueDate()}까지</b> (「민원 처리에 관한 법률」에 따른 처리기간 내 회신)<br>
+        ${t.phone?"입력하신 연락처("+esc(t.phone)+")로 처리 결과를 회신드립니다.":"연락처를 남기시면 처리 결과를 회신드립니다."}
+      </div>`;
+  }
+  refreshBadges();
+}
+/* 접수번호 조회 */
+$("#btnTrack").addEventListener("click",()=>{
+  const no=$("#trackNo").value.trim().toUpperCase();
+  const t=tickets.find(x=>x.rcpt===no);
+  const box=$("#trackResult");
+  if(!t){box.innerHTML='<div class="callout" style="margin-top:12px">해당 접수번호를 찾을 수 없습니다. 번호를 다시 확인해 주세요.</div>';return;}
+  const st=t.stage==="closed"?"종결":["접수 확인 중","처리 중","처리 완료"][t.status];
+  box.innerHTML=`<div class="callout ok" style="margin-top:12px">
+    <b>${esc(t.rcpt)}</b> — 현재 상태: <b>${st}</b><br>
+    ${(t.history||[]).map(h=>`<span style="font-family:var(--mono);color:var(--faint)">[${esc(h.at)}]</span> ${esc(h.ev)}`).join("<br>")}
+  </div>`;
+});
+
+/* ============================================================
+   당직원 포털
+   ============================================================ */
+const DSAMPLES=[
+ {ch:"전화",loc:"동안구 관양동 ○○빌라 앞",body:"골목에서 수도관이 터졌는지 물이 콸콸 솟아서 도로가 물바다예요. 지하로도 물이 들어가는 것 같아요."},
+ {ch:"전화",loc:"동안구 평촌동 ○○아파트 놀이터",body:"새벽 1시인데 놀이터에서 젊은 사람들이 술 마시고 소음이 너무 심해요. 애가 잠을 못 자요."},
+ {ch:"전화",loc:"만안구 석수동 상가건물",body:"건물 2층에서 타는 냄새가 나고 연기가 조금씩 나오는 것 같아요! 사람이 안에 있는지 모르겠어요!"},
+ {ch:"전화",loc:"미상",body:"아 그게 아니고… 내가 말이야 술 한잔 했는데… 시장 바꿔봐 시장. 심심해서 전화했지 뭐."}
+];
+document.querySelectorAll("[data-ds]").forEach(b=>b.addEventListener("click",()=>{
+  const s=DSAMPLES[b.dataset.ds];
+  $("#dLoc").value=s.loc;$("#dBody").value=s.body;$("#dName").value="미상";$("#dPhone").value="";
+}));
+$("#dClassify").addEventListener("click",async()=>{
+  const body=$("#dBody").value.trim();
+  if(!body){toast("통화 내용을 입력하세요");$("#dBody").focus();return;}
+  const btn=$("#dClassify");btn.disabled=true;btn.innerHTML='<span class="spin"></span> AI 1차 분류 중…';
+  let r;
+  try{r=await aiClassify(body,$("#dLoc").value.trim(),null,$("#dChannel").value,"duty");}
+  catch(e){console.error(e);r=ruleClassify(body);toast("AI 호출 실패 — 규칙엔진으로 분류했습니다");}
+  btn.disabled=false;btn.textContent="AI 1차 분류";
+  lastDuty=mkTicket(r,{loc:$("#dLoc").value.trim(),name:$("#dName").value.trim()||"미상",
+    phone:$("#dPhone").value.trim(),channel:$("#dChannel").value,body,img:null,source:"당직 직접접수",stage:"draft",status:0});
+  log(lastDuty,`${$("#dChannel").value} 접수 (당직실 직접)`);
+  log(lastDuty,`AI 1차 분류: ${CATS[r.category].name} → ${r.dept} (${r.engine==="ai"?"생성형 AI":"규칙엔진"})`);
+  renderDutyResult(lastDuty,$("#dResult"),true);
+});
+function dutyResultHTML(t,isDraft){
+  const c=CATS[t.category];
+  return `
+    <div class="result-lamp ${c.cls}" style="margin-top:16px">
+      <div class="dot"></div>
+      <div>
+        <div class="t1">${esc(c.name)} <span class="tag ${t.override?"human":"ai"}">${t.override?"당직원 판단":"AI 1차 판단"}</span></div>
+        <div class="t2">${esc(c.desc)}<br><span style="color:var(--faint)">근거 — ${esc(t.reason)}</span>
+        ${t.override?`<br><span style="color:var(--ok)">재분류: ${esc(t.override.from)} → ${esc(t.override.to)} (사유: ${esc(t.override.why)})</span>`:""}</div>
+      </div>
+    </div>
+    <ol class="sop">${SOP[t.category].map(s=>`<li>${s}</li>`).join("")}</ol>
+    ${t.script?`<div class="callout"><b>안내 스크립트</b><br>${esc(t.script)}</div>`:""}
+    ${t.category===1?`<div class="contacts">${CONTACTS.map(c=>`<div class="ct${c.sub?" sub":""}">${esc(c.n)}<b>${esc(c.v)}</b></div>`).join("")}</div>`:""}
+    <div class="reclass">
+      <span>AI 판단에 동의하지 않으시나요?</span>
+      <select data-resel>
+        <option value="">직접 재분류…</option>
+        ${[1,2,3,4].filter(n=>n!==t.category).map(n=>`<option value="${n}">${CATS[n].name}</option>`).join("")}
+      </select>
+    </div>
+    <div class="actions">
+      <button class="btn primary" style="width:auto;margin:0" data-send>✓ 확정 · 처리자에게 이송</button>
+      <button class="btn ghost" data-doc>공문 초안</button>
+      <button class="btn ghost" data-close>당직 단계 종결</button>
+    </div>
+    <div class="send-hint">확정·이송을 누르면 처리자(담당부서) 화면으로 넘어갑니다.</div>`;
+}
+function renderDutyResult(t,box,isDraft){
+  box.innerHTML=dutyResultHTML(t,isDraft);
+  bindDutyActions(t,box,isDraft);
+}
+function bindDutyActions(t,box,isDraft){
+  box.querySelector("[data-resel]").addEventListener("change",e=>{
+    const to=parseInt(e.target.value);if(!to)return;
+    const why=prompt("재분류 사유를 간단히 입력하세요 (기록됩니다)","현장 상황 고려");
+    if(why===null){e.target.value="";return;}
+    const from=CATS[t.category].name;
+    t.override={from,to:CATS[to].name,why:why||"사유 미기재"};
+    t.category=to;t.priority=CATS[to].pri;
+    log(t,`당직원 재분류: ${from} → ${CATS[to].name} (사유: ${t.override.why})`);
+    if(!isDraft)save();
+    renderDutyResult(t,box,isDraft);
+    if(!isDraft)renderQueue();
+    toast("재분류되었습니다 — 사람의 판단이 최종입니다");
+  });
+  box.querySelector("[data-send]").addEventListener("click",()=>{
+    t.stage="handover";t.status=0;
+    log(t,`당직원 확정 — ${t.dept} 이송 (우선순위 ${PRI[t.priority]})`);
+    finishDuty(t,isDraft,box);
+    toast("이송되었습니다 — 처리자 요약카드가 생성되었습니다");
+  });
+  box.querySelector("[data-close]").addEventListener("click",()=>{
+    t.stage="closed";t.status=2;
+    log(t,"당직 단계 종결 처리");
+    finishDuty(t,isDraft,box);
+    toast("종결 처리 및 기록되었습니다");
+  });
+  box.querySelector("[data-doc]").addEventListener("click",()=>openDoc(t,!isDraft));
+}
+function finishDuty(t,isDraft,box){
+  if(isDraft){
+    tickets.unshift(t);lastDuty=null;
+    ["dBody","dLoc","dName","dPhone"].forEach(id=>$("#"+id).value="");
+    box.innerHTML='<div class="callout ok" style="margin-top:16px">처리되었습니다. 다음 민원을 접수하세요.</div>';
+  }
+  save();renderQueue();
+}
+/* 검토 대기 큐 (민원인 셀프접수 + 재연결) */
+function renderQueue(){
+  const box=$("#dutyQueue");
+  const q=tickets.filter(t=>t.stage==="duty").sort((a,b)=>a.priority-b.priority);
+  if(!q.length){box.innerHTML='<div class="empty">검토할 건이 없습니다.<br>민원인 포털에서 접수된 건과 긴급 재연결 요청이 이곳에 표시됩니다.</div>';return;}
+  box.innerHTML=`<div class="board">${q.map(t=>`
+    <div class="brow cat${t.category} ${t.reconnect?"reconnect":""}" data-open="${t.id}">
+      <span class="pri p${t.priority}">${PRI[t.priority]}</span>
+      <span class="brow-title">${t.reconnect?'<span class="tag recon">긴급</span> ':""}${esc(t.title)}</span>
+      <span class="brow-meta">${esc(t.channel)}</span>
+      <span class="brow-meta rc">${esc(t.rcpt)}</span>
+      <span class="brow-arrow">＋</span>
+    </div>
+    <div class="bdetail" id="q-${t.id}" hidden>
+      <dl>
+        <dt>접수</dt><dd>2026. ${esc(t.at)} · ${esc(t.channel)} · ${esc(t.source||"")}</dd>
+        <dt>장소</dt><dd>${esc(t.loc||"미상")}</dd>
+        <dt>민원인</dt><dd>${esc(t.name)} ${esc(t.phone||"(연락처 없음)")}</dd>
+        <dt>신고 원문</dt><dd>${esc(t.body||t.summary)}</dd>
+      </dl>
+      ${t.img?`<img class="thumb" src="${t.img}" data-zoom alt="현장 사진">`:""}
+      <div class="qbody"></div>
+    </div>`).join("")}</div>`;
+  box.querySelectorAll("[data-open]").forEach(row=>row.addEventListener("click",e=>{
+    if(e.target.closest(".qbody")||e.target.closest("[data-zoom]"))return;
+    const t=q.find(x=>x.id==row.dataset.open);
+    const det=$("#q-"+t.id);
+    const opening=det.hidden;
+    det.hidden=!opening;
+    row.querySelector(".brow-arrow").textContent=opening?"－":"＋";
+    if(opening){
+      const body=det.querySelector(".qbody");
+      if(!body.dataset.built){
+        body.innerHTML=dutyResultHTML(t,false);
+        bindDutyActions(t,body,false);
+        body.dataset.built="1";
+        det.querySelectorAll("[data-zoom]").forEach(im=>im.addEventListener("click",()=>{
+          $("#imgviewImg").src=im.src;$("#imgview").classList.add("show");
+        }));
+      }
+    }
+  }));
+}
+
+/* ============================================================
+   처리자 포털 — 우선순위 요약카드
+   ============================================================ */
+let filter="all";
+document.querySelectorAll(".chip").forEach(ch=>ch.addEventListener("click",()=>{
+  document.querySelectorAll(".chip").forEach(x=>x.classList.remove("on"));
+  ch.classList.add("on");filter=ch.dataset.f;renderTickets();
+}));
+const SLABEL=["대기","처리중","완료"];
+function renderTickets(){
+  const list=$("#ticketList");
+  const items=tickets.filter(t=>t.stage==="handover"&&(filter==="all"||("s"+t.status)===filter))
+    .sort((a,b)=>a.priority-b.priority||a.status-b.status);
+  if(!items.length){list.innerHTML='<div class="empty">이송된 건이 없습니다.<br>당직원이 확정·이송하면 우선순위 요약카드가 이곳에 표시됩니다.</div>';return;}
+  list.innerHTML=items.map(t=>`
+    <div class="ticket cat${t.category}">
+      <div class="top sumhead" style="display:flex">
+        <span class="pri p${t.priority}">${PRI[t.priority]}</span>
+        <span class="title">${esc(t.title)}</span>
+        <span class="tag ${t.override?"human":"ai"}">${t.override?"당직원 판단":"AI 분류"}</span>
+        <span class="meta">${esc(t.rcpt)}</span>
+        <span class="dept">${esc(t.dept)}</span>
+      </div>
+      <dl>
+        <dt>접수일시</dt><dd>2026. ${esc(t.at)} · ${esc(t.channel)} · ${esc(t.source||"")}</dd>
+        <dt>핵심 요지</dt><dd>${esc(t.summary)}</dd>
+        <dt>분류 근거</dt><dd>${esc(t.reason)}${t.override?` → <b style="color:var(--ok)">당직원 재분류(${esc(t.override.why)})</b>`:""}</dd>
+        <dt>필요 조치</dt><dd>${esc(t.action)}</dd>
+        <dt>장소</dt><dd>${esc(t.loc||"미상")}</dd>
+        <dt>회신처</dt><dd>${esc(t.name)} ${esc(t.phone||"(연락처 없음)")}</dd>
+      </dl>
+      ${t.img?`<img class="thumb" src="${t.img}" data-zoom alt="현장 사진">`:""}
+      <div class="foot">
+        <span class="status s${t.status}">${SLABEL[t.status]}</span>
+        ${t.status<2?`<button class="btn ghost small" data-next="${t.id}">${t.status===0?"처리 시작":"완료 처리"}</button>`:""}
+        <button class="btn ghost small" data-doc="${t.id}">공문 초안</button>
+        <button class="btn ghost small" data-copy="${t.id}">카드 복사</button>
+        <button class="btn ghost small" data-tl="${t.id}">이력 ${(t.history||[]).length}</button>
+        <button class="btn ghost small" data-del="${t.id}" style="margin-left:auto;color:var(--faint)">삭제</button>
+      </div>
+      <div class="timeline" id="tl-${t.id}">
+        ${(t.history||[]).map(h=>`<div class="ev"><span class="t">${esc(h.at)}</span><span>${esc(h.ev)}</span></div>`).join("")}
+      </div>
+    </div>`).join("");
+  list.querySelectorAll("[data-next]").forEach(b=>b.addEventListener("click",()=>{
+    const t=tickets.find(x=>x.id==b.dataset.next);t.status++;
+    log(t,t.status===1?"담당부서 처리 시작":"처리 완료 — 민원인 회신");save();renderTickets();
+  }));
+  list.querySelectorAll("[data-doc]").forEach(b=>b.addEventListener("click",()=>openDoc(tickets.find(x=>x.id==b.dataset.doc))));
+  list.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>{
+    copyText(cardText(tickets.find(x=>x.id==b.dataset.copy)));toast("요약카드가 복사되었습니다");
+  }));
+  list.querySelectorAll("[data-tl]").forEach(b=>b.addEventListener("click",()=>$("#tl-"+b.dataset.tl).classList.toggle("show")));
+  list.querySelectorAll("[data-zoom]").forEach(im=>im.addEventListener("click",()=>{
+    $("#imgviewImg").src=im.src;$("#imgview").classList.add("show");
+  }));
+  list.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",()=>{
+    if(!confirm("이 건을 삭제할까요?"))return;
+    tickets=tickets.filter(x=>x.id!=b.dataset.del);save();renderTickets();
+  }));
+}
+$("#imgview").addEventListener("click",()=>$("#imgview").classList.remove("show"));
+function cardText(t){
+  return `[야간민원 요약카드] ${t.rcpt} · ${PRI[t.priority]}
+- 제목: ${t.title}
+- 접수: 2026. ${t.at} / ${t.channel} / ${t.source||"당직실"}
+- 분류: ${CATS[t.category].name} (${t.override?"당직원 재분류: "+t.override.why:"AI 분류"})
+- 분류 근거: ${t.reason}
+- 핵심 요지: ${t.summary}
+- 필요 조치: ${t.action}
+- 장소: ${t.loc||"미상"}
+- 담당(추천): ${t.dept}
+- 회신처: ${t.name} ${t.phone||"(연락처 없음)"}
+- 처리 이력: ${(t.history||[]).map(h=>`[${h.at}] ${h.ev}`).join(" / ")}`;
+}
+function copyText(txt){
+  if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(txt);}
+  else{const ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();}
+}
+$("#btnCopyAll").addEventListener("click",()=>{
+  const pend=tickets.filter(t=>t.stage==="handover"&&t.status<2).sort((a,b)=>a.priority-b.priority);
+  if(!pend.length){toast("복사할 대기 건이 없습니다");return;}
+  copyText(`■ 야간 당직 이송 브리핑 (${now()} 기준, ${pend.length}건 · 우선순위순)\n\n`+pend.map(cardText).join("\n\n"));
+  toast("아침 브리핑 "+pend.length+"건이 복사되었습니다");
+});
+
+/* ---------- 공문 ---------- */
+function docTemplate(t){
+  return `안양시 당직실
+
+수    신: ${t.dept} 과장
+(경    유)
+제    목: 야간·휴일 접수 민원 이송 및 조치 요청 (${t.title})
+
+1. 야간·휴일 당직 근무 중 접수된 민원을 「민원 처리에 관한 법률」 제6조에 따라 아래와 같이 이송하니, 조치 후 그 결과를 회신하여 주시기 바랍니다.
+
+2. 민원 개요
+  가. 접수번호: ${t.rcpt} (우선순위 ${PRI[t.priority]})
+  나. 접수일시 및 경로: 2026. ${t.at} / ${t.channel}${t.img?" (현장사진 첨부)":""}
+  다. 발생 장소: ${t.loc||"미상"}
+  라. 민원 요지: ${t.summary}
+
+3. 당직 조치사항
+  - 분류: ${CATS[t.category].name}${t.override?" (당직원 재분류: "+t.override.why+")":" (AI 1차 분류, 당직원 확정)"}
+  - ${(t.history||[]).filter(h=>!h.ev.startsWith("문서")).map(h=>h.ev).join("\n  - ")||"접수 및 분류"}
+
+4. 요청사항
+  가. ${t.action}
+  나. 처리 결과를 민원인(${t.name}, ${t.phone||"연락처 미확보"})에게 회신 및 당직실 통보
+
+붙임  야간민원 접수 원문${t.img?" 및 현장사진 각":""} 1부.  끝.`;
+}
+async function openDoc(t,useLog=true){
+  let body=docTemplate(t);
+  if(localStorage.getItem("dj_apikey")){
+    try{
+      toast("AI가 공문 초안을 다듬는 중…");
+      const refined=await geminiCall([{text:`다음 한국 지자체 대내 공문 초안을 공문서 작성 원칙에 맞게 자연스럽게 다듬어라. 구조와 사실관계는 유지하고, 공문 전문만 출력.\n\n${body}`}]);
+      if(refined&&refined.length>100)body=refined;
+    }catch(e){console.error(e);}
+  }
+  $("#docBody").innerHTML=`<h3>내부결재(초안)</h3>${esc(body)}`;
+  $("#modal").classList.add("show");
+  $("#btnDocCopy").onclick=()=>{copyText(body);toast("공문 본문이 복사되었습니다");};
+  if(useLog&&t.id&&tickets.includes(t)){log(t,"문서: 부서 통보 공문 초안 생성");save();}
+}
+$("#btnDocClose").addEventListener("click",()=>$("#modal").classList.remove("show"));
+$("#modal").addEventListener("click",e=>{if(e.target.id==="modal")$("#modal").classList.remove("show");});
+
+/* ---------- 정책환류 ---------- */
+function renderStats(){
+  const cnt=[0,0,0,0,0];tickets.forEach(t=>cnt[t.category]++);
+  for(let i=1;i<=4;i++)$("#st"+i).textContent=cnt[i];
+  const total=cnt[1]+cnt[2]+cnt[3]+cnt[4]||1;
+  const colors=["","var(--red)","var(--amber)","var(--blue)","var(--gray)"];
+  $("#statBar").innerHTML=[1,2,3,4].map(i=>`<div style="width:${cnt[i]/total*100}%;background:${colors[i]}"></div>`).join("");
+}
+function buildAggregate(){
+  const byDept={},byCat={},byLoc={},byCh={};let overrides=0,reconnects=0;
+  tickets.forEach(t=>{
+    byDept[t.dept]=(byDept[t.dept]||0)+1;
+    byCat[t.category]=(byCat[t.category]||0)+1;
+    byCh[t.channel]=(byCh[t.channel]||0)+1;
+    if(t.override)overrides++;
+    if(t.reconnect)reconnects++;
+    const k=(t.loc||"").split(" ").slice(0,2).join(" ").trim();
+    if(k)byLoc[k]=(byLoc[k]||0)+1;
+  });
+  return {total:tickets.length,byDept,byCat,byLoc,byCh,overrides,reconnects,
+    exportedAt:new Date().toISOString(),
+    cases:tickets.map(t=>({rcpt:t.rcpt,at:t.at,channel:t.channel,source:t.source,category:t.category,dept:t.dept,loc:t.loc,title:t.title,summary:t.summary,priority:t.priority,status:t.status,override:t.override,reconnect:!!t.reconnect,history:t.history}))};
+}
+function renderInsights(){
+  const box=$("#insightBox");
+  if(!tickets.length){box.innerHTML='<div class="empty" style="padding:30px">데이터가 쌓이면 반복 패턴을 분석해 제언을 생성합니다.</div>';return;}
+  const a=buildAggregate(),out=[];
+  Object.entries(a.byLoc).filter(([,n])=>n>=2).sort((x,y)=>y[1]-x[1]).slice(0,3).forEach(([loc,n])=>out.push(
+    `<div class="insight" data-type="loc" data-key="${esc(loc)}"><span class="arrow">지도 보기 ›</span><b>반복 발생 지역</b> — ${esc(loc)} 일대 야간 민원 <b>${n}건</b> 반복.
+     <div class="why">→ 순찰 강화, 조명·CCTV·안내판 등 환경 개선 예산 반영 검토 대상.</div></div>`));
+  const topDept=Object.entries(a.byDept).filter(([d])=>d!=="—").sort((x,y)=>y[1]-x[1])[0];
+  if(topDept&&topDept[1]>=2)out.push(
+    `<div class="insight" data-type="dept"><span class="arrow">상세 보기 ›</span><b>부서별 부하</b> — 야간 민원 최다 소관 <b>${esc(topDept[0])}(${topDept[1]}건)</b>.
+     <div class="why">→ 자주 묻는 민원 자동안내 스크립트 정비, 비상연락 체계 점검 제안.</div></div>`);
+  if(a.overrides)out.push(
+    `<div class="insight" data-type="override"><span class="arrow">상세 보기 ›</span><b>AI-사람 판단 차이</b> — 당직원 재분류 <b>${a.overrides}건</b> 발생.
+     <div class="why">→ 재분류 사유를 분류 기준·학습 데이터에 반영해 AI 정확도를 지속 개선(되먹임).</div></div>`);
+  if(a.reconnects)out.push(
+    `<div class="insight" data-type="reconnect"><span class="arrow">상세 보기 ›</span><b>재연결 요청</b> — 필터 후 긴급 재연결 <b>${a.reconnects}건</b>.
+     <div class="why">→ 필터 기준의 과잉 차단 여부 점검. 배제 방지 원칙 작동 근거 데이터.</div></div>`);
+  const c4=a.byCat[4]||0;
+  if(c4)out.push(
+    `<div class="insight" data-type="noncomplaint"><span class="arrow">상세 보기 ›</span><b>비민원 콜 비중</b> — 전체 ${a.total}건 중 <b>${c4}건(${Math.round(c4/a.total*100)}%)</b>.
+     <div class="why">→ 반복 번호 응대 지침, 야간 1차 자동응답 필터 도입 검토 근거.</div></div>`);
+  if(!out.length)out.push('<div class="insight">아직 뚜렷한 반복 패턴이 없습니다. 데이터가 쌓이면 자동 생성됩니다.</div>');
+  box.innerHTML=out.join("");
+  $("#insightDetailCard").hidden=true;
+}
+
+/* 정책 제언 카드 클릭 → 상세 내용(지도 또는 목록) 표시 */
+function ticketsByLoc(loc){ return tickets.filter(t=>(t.loc||"").startsWith(loc)); }
+function detailRow(t){
+  return `<div class="detail-row"><div class="t1">${esc(t.title||"(제목 없음)")} <span style="color:var(--faint);font-weight:400">· ${esc(t.rcpt||"")}</span></div>
+    <div class="t2">${esc(t.at||"")} · ${esc(t.loc||"")} · ${esc(t.dept||"")}</div></div>`;
+}
+async function showInsightDetail(type, key){
+  const card=$("#insightDetailCard"), box=$("#insightDetail"), title=$("#insightDetailTitle");
+  card.hidden=false; card.scrollIntoView({behavior:"smooth", block:"nearest"});
+  const a=buildAggregate();
+
+  if(type==="loc"){
+    title.textContent=`📍 반복 발생 지역 — ${key}`;
+    const rows=ticketsByLoc(key);
+    box.innerHTML=`<div id="mapLoading" style="padding:16px;color:var(--dim);font-size:13px">지도를 불러오는 중…</div>`;
+    try{
+      const q=encodeURIComponent(key+", 안양시");
+      const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${q}`);
+      const geo=await res.json();
+      if(geo && geo[0]){
+        const lat=parseFloat(geo[0].lat), lon=parseFloat(geo[0].lon);
+        const d=0.006;
+        const bbox=`${lon-d},${lat-d},${lon+d},${lat+d}`;
+        box.innerHTML=`<iframe class="map-embed" src="https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&marker=${lat},${lon}&layer=mapnik" loading="lazy"></iframe>
+          <p class="hint">OpenStreetMap 기준 근사 위치입니다. 실배포 시 정확한 좌표(지오코딩) 연동을 권장합니다.</p>`;
+      }else{
+        box.innerHTML=`<p class="hint">지도에서 위치를 찾지 못했습니다(주소 표기 한계). 아래 목록으로 대체합니다.</p>`;
+      }
+    }catch(e){
+      box.innerHTML=`<p class="hint">지도를 불러오지 못했습니다(오프라인 환경이거나 네트워크 차단). 아래 목록으로 대체합니다.</p>`;
+    }
+    box.innerHTML+=`<div class="detail-list">${rows.map(detailRow).join("")}</div>`;
+
+  }else if(type==="dept"){
+    title.textContent="🏢 부서별 야간 민원 부하";
+    const entries=Object.entries(a.byDept).filter(([d])=>d!=="—").sort((x,y)=>y[1]-x[1]);
+    const max=entries[0]?.[1]||1;
+    const bars=entries.map(([d,n])=>`<div class="detail-bar"><span class="lbl">${esc(d)}</span><span class="bar"><i style="width:${Math.round(n/max*100)}%"></i></span><span class="val">${n}건</span></div>`).join("");
+    const topRows=entries.length?tickets.filter(t=>t.dept===entries[0][0]).map(detailRow).join(""):"";
+    box.innerHTML=`${bars}<p class="hint" style="margin-top:10px">최다 부서(${esc(entries[0]?.[0]||"-")}) 관련 건:</p><div class="detail-list">${topRows}</div>`;
+
+  }else if(type==="override"){
+    title.textContent="🔁 AI-사람 판단 차이 (당직원 재분류 이력)";
+    const rows=tickets.filter(t=>t.override).map(t=>
+      `<div class="detail-row"><div class="t1">${esc(t.title||"")} <span style="color:var(--faint);font-weight:400">· ${esc(t.rcpt||"")}</span></div>
+       <div class="t2">${esc(t.override.from)} → <b style="color:var(--ok)">${esc(t.override.to)}</b> · 사유: ${esc(t.override.why)}</div></div>`).join("");
+    box.innerHTML=`<div class="detail-list">${rows||'<div class="empty">재분류 이력이 없습니다.</div>'}</div>`;
+
+  }else if(type==="reconnect"){
+    title.textContent="🚨 재연결 요청 이력";
+    const rows=tickets.filter(t=>t.reconnect).map(detailRow).join("");
+    box.innerHTML=`<p class="hint">필터링(비민원 판정) 후 실제 긴급상황으로 재연결 요청된 건입니다. 배제 방지 원칙이 실제로 작동한 사례입니다.</p><div class="detail-list">${rows||'<div class="empty">재연결 이력이 없습니다.</div>'}</div>`;
+
+  }else if(type==="noncomplaint"){
+    title.textContent="🔇 비민원(필터) 건 목록";
+    const rows=tickets.filter(t=>t.category===4).map(detailRow).join("");
+    box.innerHTML=`<div class="detail-list">${rows||'<div class="empty">비민원 건이 없습니다.</div>'}</div>`;
+  }
+}
+$("#insightBox").addEventListener("click",(e)=>{
+  const card=e.target.closest(".insight[data-type]");
+  if(!card)return;
+  showInsightDetail(card.dataset.type, card.dataset.key);
+});
+$("#btnCloseDetail").addEventListener("click",()=>{ $("#insightDetailCard").hidden=true; });
+$("#btnAiInsight").addEventListener("click",async()=>{
+  if(!localStorage.getItem("dj_apikey")){toast("설정 탭에서 Gemini API 키를 먼저 저장하세요");return;}
+  if(!tickets.length){toast("분석할 데이터가 없습니다");return;}
+  const b=$("#btnAiInsight");b.disabled=true;b.textContent="AI 분석 중…";
+  try{
+    const raw=await geminiCall([{text:`너는 지자체 정책분석관이다. 야간 당직 민원 데이터(JSON)를 분석해 정책·예산·인력 개선 제언 3가지를 행정 보고체로 작성하라. 각 제언은 [제언 제목] 한 줄 + 근거·기대효과 2문장. 제언만 출력.\n${JSON.stringify(buildAggregate()).slice(0,6000)}`}]);
+    $("#insightBox").insertAdjacentHTML("afterbegin",
+      `<div class="insight" style="border-left-color:var(--amber)"><b style="color:var(--amber)">생성형 AI 심화 제언</b><br>${esc(raw).replace(/\n/g,"<br>")}</div>`);
+    toast("AI 제언이 생성되었습니다");
+  }catch(e){console.error(e);toast("AI 호출 실패");}
+  b.disabled=false;b.textContent="생성형 AI 심화 제언 (API 키 필요)";
+});
+$("#btnExport").addEventListener("click",()=>{
+  if(!tickets.length){toast("내보낼 데이터가 없습니다");return;}
+  const blob=new Blob([JSON.stringify(buildAggregate(),null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="당직등_정책환류데이터_"+new Date().toISOString().slice(0,10)+".json";
+  a.click();URL.revokeObjectURL(a.href);
+  toast("환류 데이터 JSON이 다운로드되었습니다");
+});
+
+/* ---------- 설정 ---------- */
+$("#apiKey").value=localStorage.getItem("dj_apikey")||"";
+$("#btnSaveKey").addEventListener("click",()=>{
+  const v=$("#apiKey").value.trim();
+  if(!v){toast("키를 입력하세요");return;}
+  localStorage.setItem("dj_apikey",v);toast("키가 저장되었습니다 — 생성형 AI 모드로 동작합니다");
+});
+$("#btnDelKey").addEventListener("click",()=>{localStorage.removeItem("dj_apikey");$("#apiKey").value="";toast("키가 삭제되었습니다 — 규칙엔진으로 동작합니다");});
+$("#btnDemo").addEventListener("click",()=>{
+  const demo=[
+    {ch:"온라인",src:"민원인 셀프접수",loc:"만안구 안양동 ○○공원 산책로",body:"공원 산책로 가로등이 며칠째 꺼져 있어요. 밤에 너무 어둡습니다.",stage:"duty",status:0},
+    {ch:"전화",src:"당직 직접접수",loc:"동안구 관양동 ○○빌라 앞",body:"수도관이 터졌는지 물이 콸콸 솟아서 도로가 물바다예요.",stage:"handover",status:0},
+    {ch:"전화",src:"당직 직접접수",loc:"만안구 석수동 상가건물",body:"건물 2층에서 타는 냄새가 나고 연기가 나오는 것 같아요!",stage:"handover",status:1},
+    {ch:"문자",src:"민원인 셀프접수",loc:"동안구 평촌동 ○○아파트 놀이터",body:"새벽 1시인데 놀이터에서 술 마시고 소음이 너무 심해요.",stage:"handover",status:2},
+    {ch:"문자",src:"민원인 셀프접수",loc:"동안구 평촌동 ○○아파트 놀이터",body:"놀이터에서 폭죽 터뜨리고 시끄러워요. 매번 반복이네요.",stage:"handover",status:2},
+    {ch:"온라인",src:"민원인 셀프접수",loc:"만안구 박달동 재활용 수거장 옆",body:"수거장 옆에 가구랑 폐기물을 무단으로 버리고 갑니다. 단속해 주세요.",stage:"handover",status:0},
+    {ch:"전화",src:"당직 직접접수",loc:"미상",body:"술 한잔 했는데… 시장 바꿔봐. 심심해서 전화했지 뭐.",stage:"closed",status:2}
+  ];
+  demo.forEach((s,i)=>{
+    const r=ruleClassify(s.body);
+    const t=mkTicket(r,{loc:s.loc,name:"미상",phone:i%2?"010-1234-5678":"",channel:s.ch,body:s.body,img:null,source:s.src,stage:s.stage,status:s.status});
+    log(t,`${s.ch} 접수 (${s.src})`);
+    log(t,`AI 1차 분류: ${CATS[t.category].name} → ${t.dept} (규칙엔진)`);
+    if(s.stage==="handover"){log(t,`당직원 확정 — ${t.dept} 이송 (우선순위 ${PRI[t.priority]})`);}
+    if(s.status>=1&&s.stage==="handover")log(t,"담당부서 처리 시작");
+    if(s.status===2&&s.stage==="handover")log(t,"처리 완료 — 민원인 회신");
+    tickets.unshift(t);
+  });
+  // 재분류 예시 1건
+  const r=ruleClassify("시끄러운 소음이 계속돼요");
+  const t=mkTicket(r,{loc:"만안구 안양동 ○○상가",name:"미상",phone:"",channel:"전화",body:"상가에서 밤새 기계 돌아가는 소음이 나요. 며칠째 계속입니다.",img:null,source:"당직 직접접수",stage:"handover",status:0});
+  log(t,"전화 접수 (당직 직접접수)");
+  log(t,`AI 1차 분류: ${CATS[t.category].name} → ${t.dept} (규칙엔진)`);
+  t.override={from:CATS[t.category].name,to:CATS[3].name,why:"일회성 소란 아닌 상시 사업장 소음으로 판단"};
+  log(t,`당직원 재분류: ${t.override.from} → ${t.override.to} (사유: ${t.override.why})`);
+  t.category=3;t.dept="환경과";t.priority=3;
+  log(t,`당직원 확정 — 환경과 이송 (우선순위 ${PRI[3]})`);
+  tickets.unshift(t);
+  save();toast("예시 8건이 추가되었습니다 (반복 패턴·재분류 사례 포함)");
+  renderQueue();renderTickets();renderStats();renderInsights();
+});
+$("#btnWipe").addEventListener("click",()=>{
+  if(!confirm("모든 접수 데이터를 삭제할까요?"))return;
+  tickets=[];save();renderQueue();renderTickets();renderStats();renderInsights();toast("초기화되었습니다");
+});
+
+function refreshBadges(){
+  // 상단 카운트 배지는 제거됨 — 유지 호환용 no-op
+}
+refreshBadges();
+// 첫 실행 시 게시판 더미(민원인 접수·이송 건) 로드
+seedDummyIfEmpty().then(refreshBadges);
+
+/* ---------- 판올림(버전) 카운터 ----------
+   APP_VERSION 이 바뀔 때마다 판올림 횟수 1 증가. 같은 버전을 여러 번 열어도 중복 증가하지 않음. */
+const APP_VERSION="v13";
+(function(){
+  const seen=JSON.parse(localStorage.getItem("dj_seen_versions")||"[]");
+  if(!seen.includes(APP_VERSION)){seen.push(APP_VERSION);localStorage.setItem("dj_seen_versions",JSON.stringify(seen));}
+  $("#buildCount").textContent=seen.length;
+})();
+</script>
+</body>
+</html>
